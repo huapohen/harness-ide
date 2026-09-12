@@ -11,14 +11,14 @@ export async function startHotUpdates(kernel){
    else if(saved.id==='settings:keybindings-json'){await wb.run('settings.keybindingsJSON');tab=wb.active();if(saved.state)await tab.hotRestore(saved.state);}
    else if(saved.kind==='settings'){await wb.run('settings.keybindings');tab=wb.active();}
    else{if(saved.path)await wb.run('file.open')(saved.path,{external:saved.external,duplicate:true});else await wb.run('file.newText');tab=wb.active();if(saved.state)await tab.hotRestore(saved.state);}
-   remap.set(saved.id,tab.id);tab.id=saved.id;tab.title=saved.title;tab.pinned=saved.pinned;tab.element.scrollTop=saved.scrollTop||0;
+   remap.set(saved.id,tab.id);tab.id=saved.id;tab.title=saved.title;tab.pinned=saved.pinned;tab.temporary=saved.temporary;tab.element.scrollTop=saved.scrollTop||0;
   }
   await wb.restoreLayout(snapshot.layout);setTimeout(()=>{for(const t of wb.tabs)t.hotRestoreScroll?.();},0);for(const t of wb.tabs)t.commitUpdate?.();sessionStorage.removeItem('harness-hot-snapshot');sessionStorage.removeItem('harness-hot-navigation');window.harnessHotUpdating=false;
  }
  await restore();window.harnessHotReady=true;
  async function snapshot(){if(document.querySelector('dialog[open],.tab-rename'))throw Error('Waiting for the current dialog or rename to finish');
   const tabs=[];
-  for(const t of wb.tabs){if(t.kind!=='terminal'&&t.kind!=='settings'&&!t.path&&!t.hotSnapshot)throw Error('Waiting for unsupported preview to close');if(t.dirty&&!t.hotSnapshot)throw Error('Waiting for unsaved image or settings changes');tabs.push({id:t.id,title:t.title,kind:t.kind,path:t.path,external:t.external,pinned:t.pinned,state:t.hotSnapshot?.(),cols:t.terminal?.cols,rows:t.terminal?.rows,scrollTop:t.element.scrollTop});}
+  for(const t of wb.tabs){if(t.kind!=='terminal'&&t.kind!=='settings'&&!t.path&&!t.hotSnapshot)throw Error('Waiting for unsupported preview to close');if(t.dirty&&!t.hotSnapshot)throw Error('Waiting for unsaved image or settings changes');tabs.push({id:t.id,title:t.title,kind:t.kind,path:t.path,external:t.external,pinned:t.pinned,temporary:t.temporary,state:t.hotSnapshot?.(),cols:t.terminal?.cols,rows:t.terminal?.rows,scrollTop:t.element.scrollTop});}
   const result={tabs,layout:wb.snapshotLayout()};
   // Check storage capacity before detaching any terminal.
   sessionStorage.setItem('harness-hot-snapshot',JSON.stringify(result));

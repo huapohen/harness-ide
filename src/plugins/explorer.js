@@ -37,13 +37,13 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
  async function tree(container,rel='.',depth=0){
   const entries=await api('list',{path:rel});entries.sort((a,b)=>Number(b.directory)-Number(a.directory)||a.name.localeCompare(b.name));
   for(const entry of entries){
-   const p=join(rel,entry.name),row=button('',p,async()=>{markSelection(row,p,entry.directory);if(entry.directory)await toggle();else{await wb.run('file.open')(p);row.focus();}},'file-row');
+   const p=join(rel,entry.name),row=button('',p,async()=>{markSelection(row,p,entry.directory);if(entry.directory)await toggle();else{await wb.run('file.open')(p,{temporary:true});row.focus();}},'file-row');
    row.dataset.path=p;row.dataset.dropDirectory=entry.directory?p:parent(p);row.setAttribute('role','treeitem');row.setAttribute('aria-level',String(depth+1));row.setAttribute('aria-selected',String(multi.has(p)));row.classList.toggle('selected',multi.has(p));row.style.paddingLeft=(8+depth*10)+'px';
    const arrow=el('span','tree-chevron'),children=el('div','tree-children');children.setAttribute('role','group');children.style.setProperty('--guide-left',(16+depth*10)+'px');
    const drawArrow=()=>{arrow.className='tree-chevron'+(entry.directory?' codicon-'+(expanded.has(p)?'chevron-down':'chevron-right'):'');if(entry.directory)row.setAttribute('aria-expanded',String(expanded.has(p)));};
    const toggle=async()=>{if(expanded.has(p)){expanded.delete(p);children.replaceChildren();}else{expanded.add(p);try{await tree(children,p,depth+1);}catch(e){expanded.delete(p);throw e;}}drawArrow();};
    row.onmousedown=e=>{if(e.metaKey)e.preventDefault();};
-   row.onclick=e=>{Promise.resolve().then(async()=>{markSelection(row,p,entry.directory,e.metaKey);if(e.altKey)await copyText(e.shiftKey?p:(await manage('absolute',p)).path);if(e.metaKey){row.focus();return;}if(entry.directory)await toggle();else{await wb.run('file.open')(p);row.focus();}}).catch(logMessage);};
+   row.onclick=e=>{Promise.resolve().then(async()=>{markSelection(row,p,entry.directory,e.metaKey);if(e.altKey)await copyText(e.shiftKey?p:(await manage('absolute',p)).path);if(e.metaKey){row.focus();return;}if(entry.directory)await toggle();else{await wb.run('file.open')(p,{temporary:true});row.focus();}}).catch(logMessage);};
    drawArrow();row.append(arrow);
    if(!entry.directory){const icon=fileIcon(entry.name),glyph=el('span','tree-file-icon',icon.character);glyph.setAttribute('aria-hidden','true');glyph.style.setProperty('--file-icon-dark',icon.dark);glyph.style.setProperty('--file-icon-light',icon.light);row.append(glyph);}
    row.append(el('span','tree-label',entry.name));row.oncontextmenu=e=>{if(!multi.has(p))markSelection(row,p,entry.directory);context(e,p,entry.directory);};

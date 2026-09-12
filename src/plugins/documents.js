@@ -10,14 +10,14 @@ export default {id:'documents',requires:['api','workbench'],activate(ctx){
  function dialog(action,name=''){const handler=window.webkit?.messageHandlers.nativeFiles;if(!handler){logMessage('请在 macOS 应用中使用文件选择框');return Promise.resolve(null);}const id=crypto.randomUUID();return new Promise(resolve=>{pending.set(id,resolve);handler.postMessage({id,action,name});});}
  window.harnessFileDialogResult=(id,path)=>{pending.get(id)?.(path||null);pending.delete(id);};
  const recent=(path,directory=false)=>window.webkit?.messageHandlers.nativeFiles?.postMessage({action:'recent',path,directory});
- async function open(path,{external=false,fresh=false,duplicate=false}={}){
+ async function open(path,{external=false,fresh=false,duplicate=false,temporary=false}={}){
   const identity=duplicate?'split:'+crypto.randomUUID():fresh?'untitled:'+crypto.randomUUID():(external?'external:':'file:')+path;
   const existing=wb.tabs.find(t=>t.id===identity);if(existing){wb.open(existing);return;}
   const result=fresh?{data:'',version:null}:await api(external?'external':'read',{action:'read',path});
   if(!fresh&&!external){const info=await api('info');if(!info.host)recent(info.root+'/'+path);}
   const bytes=Uint8Array.from(atob(result.data),c=>c.charCodeAt(0));let ext=fresh?'txt':path.split('.').at(-1).toLowerCase(),version=result.version;
   const element=el('section','document tab-content'),toolbar=el('div','document-toolbar'),content=el('div','document-content');element.append(content);
-  const tab={id:identity,path:fresh?undefined:path,title:fresh?`Untitled-${++untitled}`:path.split('/').at(-1),kind:'file',icon:ext==='md'?'M↓':ext==='pdf'?'P':'◇',element,external};
+  const tab={id:identity,path:fresh?undefined:path,title:fresh?`Untitled-${++untitled}`:path.split('/').at(-1),kind:'file',temporary:temporary&&!fresh&&!duplicate,icon:ext==='md'?'M↓':ext==='pdf'?'P':'◇',element,external};
   tab.rename=async name=>{
    if(!name.trim()||name==='.'||name==='..'||/[\/\x00]/.test(name))throw Error('Invalid file name');
    if(fresh){tab.title=name;return;}
