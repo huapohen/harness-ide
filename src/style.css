@@ -185,3 +185,5 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 
 /* Folder chevrons and file icons share one column at every tree depth. */
 .file-row>.tree-file-icon,.file-row>.tree-chevron{width:16px;min-width:16px;flex:0 0 16px;text-align:center}
+
+.sidebar[data-panel="explorer"]>.sidebar-heading{display:none}

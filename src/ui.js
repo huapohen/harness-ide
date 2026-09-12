@@ -5,7 +5,7 @@ export function form(title,fields,submit='确认',options={}) {return new Promis
  const d=el('dialog','dialog'+(options.compact?' compact-dialog':''));d.setAttribute('aria-label',options.ariaLabel||title||'Create');const f=el('form');if(title)f.append(el('h2','',title));const inputs={};
  for(const field of fields){const label=el('label','',field.label);const input=el('input');input.setAttribute('aria-label',field.ariaLabel||field.label||field.name);input.value=field.value||'';input.placeholder=field.placeholder||'';input.required=field.required!==false;inputs[field.name]=input;label.append(input);f.append(label);}
  const actions=el('div','actions');const cancel=button('取消','取消',()=>d.close());cancel.type='button';const ok=el('button','primary',submit);ok.type='submit';actions.append(cancel,ok);f.append(actions);d.append(f);document.body.append(d);
- f.onsubmit=e=>{e.preventDefault();resolve(Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,v.value])));d.close();};d.onclose=()=>{resolve(null);d.remove();};d.showModal();
+ f.onsubmit=e=>{e.preventDefault();resolve(Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,v.value])));d.close();};d.oncancel=e=>e.preventDefault();d.onkeyup=e=>{if(e.key==='Escape')d.close();};d.onclose=()=>{resolve(null);d.remove();};requestAnimationFrame(()=>{if(d.isConnected){d.showModal();Object.values(inputs)[0]?.focus();}});
  });}
 export function saveDecision(title) { return new Promise(resolve=>{
  const dialog=el('dialog','dialog');dialog.append(el('h2','',`保存对“${title}”的修改？`),el('p','','关闭前可以保存修改，或丢弃本次修改。'));
