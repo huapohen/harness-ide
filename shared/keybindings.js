@@ -1,5 +1,6 @@
 // Shared, dependency-free validation and matching. No eval of user configuration.
 export const defaults = [
+ ['cmd+shift+2','markdown.togglePreview','!dialogFocus'],
  ['cmd+shift+e','workbench.sidebar','!dialogFocus'],
  ['cmd+alt+b','view.secondary','!dialogFocus'],
  ['shift+u','editor.selectGroupForward','editorTextFocus'],

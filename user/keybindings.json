@@ -343,5 +343,10 @@
     "key": "cmd+shift+e",
     "command": "workbench.sidebar",
     "when": "!dialogFocus"
+  },
+  {
+    "key": "cmd+shift+2",
+    "command": "markdown.togglePreview",
+    "when": "!dialogFocus"
   }
 ]

@@ -79,7 +79,7 @@ npm test
 | Command+W | 关闭当前未固定标签 |
 | Shift+Option+W / Command+Shift+W | 关闭所有未固定标签 |
 | Command+3 | 固定 / 取消固定标签 |
-| Command+D | Markdown 源码 / 预览切换 |
+| Command+D / Command+Shift+2 | Markdown 源码 / 预览切换 |
 | Command+Shift+P | 命令面板 |
 | Command+, | 键盘快捷键设置 |
 
@@ -129,3 +129,5 @@ codesign --verify --deep --strict "build/Harness IDE.app"
 ## Git 提交范围
 
 提交源码、依赖锁文件、必要静态资源、测试、文档以及明确共享的 `user/keybindings.json`。忽略其余个人配置、`history/`、`hot-updates/`、`output/`、依赖安装目录、构建产物、应用包、日志、`.env` 和密钥文件；实际用户工作区不随源码上传。
+
+Markdown 文件默认以编辑模式打开。标签右键可选择「编辑模式」或「预览模式」；右上角不再显示模式切换图标。切换使用当前内容，保留未保存修改。
