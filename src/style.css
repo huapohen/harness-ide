@@ -146,7 +146,7 @@
 
 .close-tab{width:20px;min-width:20px;height:20px;flex:0 0 20px;padding:0;text-align:center}.close-tab.is-dirty{font-size:11px}.terminal-split{gap:0}.terminal-split>.split-sash{flex:0 0 5px;background:var(--border);cursor:col-resize;touch-action:none;transition:background .15s}.terminal-split.horizontal>.split-sash{cursor:row-resize}.terminal-split>.split-sash:hover,.terminal-split>.split-sash:focus-visible{background:var(--accent)}.markdown pre{background:#303640!important;border:1px solid #414752!important;border-radius:4px}.markdown pre code{background:transparent!important;color:#abb2bf!important}[data-theme="light"] .markdown pre{background:#f3f3f3!important}[data-theme="light"] .markdown pre code{color:#383a42!important}
 /* Markdown surfaces: avoid near-black blocks and keep table boundaries visible. */
-.markdown{--md-surface:#303640;--md-grid:#555d6a}
+.markdown{--md-surface:#303640;--md-grid:#404650}
 .markdown blockquote{background:var(--md-surface);border-left:3px solid #8abebf;color:var(--markdownColor,#b0b0b0)}
 .markdown pre,.markdown kbd,.markdown th{background:var(--md-surface)!important}
 .markdown table{border-collapse:collapse;border:1px solid var(--md-grid);margin:16px 0}
@@ -154,9 +154,9 @@
 .markdown tbody tr{background:transparent}
 [data-theme="light"] .markdown{--md-surface:#eef0f3;--md-grid:#b8bec8}
 /* Selected table palette: 01 Mist Gray. */
-.markdown table{color:#c0c0c0;border:1px solid #59616d}
-.markdown table th{background:#343a43!important;color:#c0c0c0;border:1px solid #59616d}
-.markdown table td{background:#303640;color:#c0c0c0;border:1px solid #59616d}
+.markdown table{color:#c0c0c0;border:1px solid var(--md-grid)}
+.markdown table th{background:#343a43!important;color:#c0c0c0;border:1px solid var(--md-grid)}
+.markdown table td{background:#303640;color:#c0c0c0;border:1px solid var(--md-grid)}
 [data-theme="light"] .markdown table{color:#444b55;border-color:#aab2be}
 [data-theme="light"] .markdown table th{background:#e2e6eb!important;color:#444b55;border-color:#aab2be}
 [data-theme="light"] .markdown table td{background:#f0f2f5;color:#444b55;border-color:#aab2be}
