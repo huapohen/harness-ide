@@ -15,7 +15,7 @@
 | Command+3 | 固定 / 取消固定当前标签 |
 | Command+1 / Command+2 | 循环切换前一个 / 后一个标签 |
 | Command+D / Command+Shift+2 | Markdown 源码 / 预览切换 |
-| Command+Backspace | 删除目录树中选中的项目（目录树获得焦点时） |
+| Command+Backspace | 将目录树中选中的文件或文件夹直接移到废纸篓，不弹删除确认（目录树获得焦点时） |
 
 关闭未保存文件时提供保存、不保存、取消；有运行任务的终端受到关闭保护。所有关闭入口（快捷键、右键 Close、Close Others、Close All）均保护固定标签，必须先 Unpin。固定后关闭按钮的位置显示爱心，点击爱心取消固定。
 
