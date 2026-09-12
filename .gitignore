@@ -5,7 +5,8 @@ build/
 *.app/
 
 # Local runtime state, installed plugins, and user data
-user/
+/user/*
+!/user/keybindings.json
 history/
 hot-updates/
 output/
