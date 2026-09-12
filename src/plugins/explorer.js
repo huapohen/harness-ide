@@ -31,7 +31,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
  if(p!=='.')rows.push(item('Cut',()=>{clipboard={path:p,cut:true};}),item('Copy',()=>{clipboard={path:p,cut:false};}));
  rows.push(item('Paste',()=>paste(dir),!clipboard),null,item('Copy Path',async()=>copyText((await Promise.all(([...multi].length?[...multi]:[p]).map(async x=>(await manage('absolute',x)).path))).join('\n'))),item('Copy Relative Path',()=>copyText([...multi].join('\n')||p)));
  if(p!=='.')rows.push(null,item('Rename…',()=>rename(p)),item('Delete',async()=>{for(const x of [...multi].filter(x=>![...multi].some(parent=>x!==parent&&x.startsWith(parent+'/'))))await remove(x);}));
- rows.push(null,item('Refresh',refresh));menuAt(e.clientX,e.clientY,rows);
+ rows.push(null,item('Refresh',refresh),item('Collapse Folders in Explorer',()=>collapse()));menuAt(e.clientX,e.clientY,rows);
  }
  function markSelection(row,p,directory,additive=false){if(!additive){multi.clear();multi.add(p);}else if(multi.has(p))multi.delete(p);else multi.add(p);ctx.emit('explorer.selected',{path:p,directory});selected=p;selectedDirectory=directory;for(const r of wb.$('#sidebar-body').querySelectorAll('.file-row')){const chosen=multi.has(r.dataset.path);r.classList.toggle('selected',chosen);r.setAttribute('aria-selected',String(chosen));}}
  async function tree(container,rel='.',depth=0){
@@ -71,6 +71,5 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
  const collapse=async()=>{expanded.clear();await refresh();};
  ctx.effect(wb.command('explorer.newFolder','Explorer · 新建文件夹',()=>newFile('',selectedDirectory?selected:parent(selected),true)));
  ctx.effect(wb.command('explorer.collapseAll','Explorer · 全部折叠',collapse));
- const actions=[['new-file','新建文件',()=>newFile('')],['new-folder','新建文件夹',()=>newFile('',selectedDirectory?selected:parent(selected),true)],['refresh','刷新',refresh],['collapse-all','全部折叠',collapse]].map(([icon,title,run])=>button('',title,run,'explorer-tool codicon-'+icon));
- wb.$('#explorer-actions').append(...actions);ctx.effect(()=>actions.forEach(b=>b.remove()));update();await refresh();
+ update();await refresh();
 }};
