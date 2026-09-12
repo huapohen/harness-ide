@@ -7,13 +7,13 @@ export const markdownSticky=ViewPlugin.fromClass(class{
   this.schedule=()=>view.requestMeasure({key:this,read:()=>this.measure(),write:data=>this.render(data)});
   view.scrollDOM.addEventListener('scroll',this.schedule,{passive:true});this.schedule();
  }
- update(update){if(update.docChanged)this.headings=markdownHeadings(update.state.doc.toString());if(update.docChanged||update.geometryChanged||update.viewportChanged)this.schedule();}
+ update(update){if(update.docChanged)this.headings=markdownHeadings(update.state.doc.toString());this.schedule();}
  measure(){
   const view=this.view,rect=view.scrollDOM.getBoundingClientRect();
   if(!rect.height)return {rows:[]};
   const top=Math.max(0,rect.top-view.documentTop),block=view.lineBlockAtHeight(top),first=view.state.doc.lineAt(block.from).number;
   const rows=stickyMarkdownHeadings(this.headings,first),gutter=view.dom.querySelector('.cm-gutters');
-  return {rows,lineHeight:view.defaultLineHeight,gutter:gutter?.getBoundingClientRect().width||48,left:view.scrollDOM.scrollLeft,width:rect.width,top:rect.top-view.dom.getBoundingClientRect().top};
+  return {rows:rows.map(h=>({...h,spans:view.harnessHighlightLine?.(h.line)||[{text:h.text}]})),lineHeight:view.defaultLineHeight,gutter:gutter?.getBoundingClientRect().width||48,left:view.scrollDOM.scrollLeft,width:rect.width,top:rect.top-view.dom.getBoundingClientRect().top};
  }
  render(data){
   if(this.destroyed)return;this.dom.hidden=!data.rows.length;
@@ -21,7 +21,7 @@ export const markdownSticky=ViewPlugin.fromClass(class{
   this.dom.replaceChildren(...data.rows.map(h=>{
    const row=document.createElement('button');row.className='markdown-sticky-row';row.type='button';row.title='跳转到第 '+h.line+' 行';row.style.height=data.lineHeight+'px';
    const number=document.createElement('span');number.className='markdown-sticky-number';number.textContent=h.line;number.style.width=data.gutter+'px';
-   const text=document.createElement('span');text.className='markdown-sticky-text';text.textContent=h.text;text.style.transform='translateX('+(-data.left)+'px)';
+   const text=document.createElement('span');text.className='markdown-sticky-text';for(const token of h.spans){const span=document.createElement('span');span.textContent=token.text;if(token.color)span.style.color=token.color;text.append(span);}text.style.transform='translateX('+(-data.left)+'px)';
    const content=document.createElement('span');content.className='markdown-sticky-content';content.append(text);row.append(number,content);
    row.onclick=()=>{const line=this.view.state.doc.line(h.line);this.view.dispatch({selection:{anchor:line.from},effects:EditorView.scrollIntoView(line.from,{y:'start',yMargin:0})});this.view.focus();};return row;
   }));
