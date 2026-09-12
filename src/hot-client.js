@@ -5,7 +5,7 @@ export async function startHotUpdates(kernel){
  // Keep the receiver alive if the first manifest request fails.
  while(!active){try{active=await readManifest();}catch(e){statusText='Update initialization failed: '+e.message;kernel.emit('hot.status',statusText);await new Promise(resolve=>setTimeout(resolve,2000));}}
  const report=message=>{statusText=message;kernel.emit('hot.status',message);};
- async function restore(){const raw=sessionStorage.getItem('harness-hot-snapshot');if(!raw)return;const snapshot=JSON.parse(raw);const remap=new Map();
+ async function restore(){const raw=sessionStorage.getItem('harness-hot-snapshot');if(!raw)return;const snapshot=JSON.parse(raw);wb.unrestoredFiles=snapshot.unrestoredFiles||[];const remap=new Map();
   for(const saved of snapshot.tabs){let tab;
    if(saved.kind==='terminal'){tab=await wb.run('terminal.restore',saved);await new Promise((resolve,reject)=>{const start=Date.now();const tick=()=>{if(tab.isReady)return resolve();if(tab.connectionError||Date.now()-start>10000)return reject(Error('Terminal reconnect failed'));setTimeout(tick,50);};tick();});}
    else if(saved.id==='settings:keybindings-json'){await wb.run('settings.keybindingsJSON');tab=wb.active();if(saved.state)await tab.hotRestore(saved.state);}
@@ -19,7 +19,7 @@ export async function startHotUpdates(kernel){
  async function snapshot(){if(document.querySelector('dialog[open],.tab-rename'))throw Error('Waiting for the current dialog or rename to finish');
   const tabs=[];
   for(const t of wb.tabs){if(t.kind!=='terminal'&&t.kind!=='settings'&&!t.path&&!t.hotSnapshot)throw Error('Waiting for unsupported preview to close');if(t.dirty&&!t.hotSnapshot)throw Error('Waiting for unsaved image or settings changes');tabs.push({id:t.id,title:t.title,kind:t.kind,path:t.path,external:t.external,pinned:t.pinned,temporary:t.temporary,state:t.hotSnapshot?.(),cols:t.terminal?.cols,rows:t.terminal?.rows,scrollTop:t.element.scrollTop});}
-  const result={tabs,layout:wb.snapshotLayout()};
+  const result={tabs,layout:wb.snapshotLayout(),unrestoredFiles:wb.unrestoredFiles||[]};
   // Check storage capacity before detaching any terminal.
   sessionStorage.setItem('harness-hot-snapshot',JSON.stringify(result));
   try{for(let i=0;i<wb.tabs.length;i++){const t=wb.tabs[i];if(t.kind==='terminal'){const state=await t.detachForUpdate();if(!state.resumeId)throw Error(state.error||state.reason||'Terminal is not ready for hot update');tabs[i].resumeId=state.resumeId;}}sessionStorage.setItem('harness-hot-snapshot',JSON.stringify(result));}catch(e){for(const t of wb.tabs)t.cancelDetach?.();sessionStorage.removeItem('harness-hot-snapshot');throw e;}

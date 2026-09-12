@@ -34,3 +34,26 @@ test('restoration reopens clean files without stale content and restores dirty b
 test('invalid write leaves the last good session untouched',async()=>{
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'harness-session-'));try{const store=sessionStore(dir),state={schema:1,workspace,tabs:[],layout:{}};await store.write(state);assert.throws(()=>store.write({...state,schema:2}));assert.deepEqual(await sessionStore(dir).read(),state);}finally{await fs.rm(dir,{recursive:true,force:true});}
 });
+
+test('failed file restore survives subsequent snapshots for retry',async()=>{
+ const {restoreFiles}=await import('../src/file-session.js');
+ const saved={id:'missing',path:'offline.md',title:'offline.md',pinned:true};
+ const wb={tabs:[],run:()=>async()=>{throw Error('offline');},restoreLayout:async()=>{},render(){},snapshotLayout:()=>({groups:[]})};
+ await restoreFiles(wb,{tabs:[saved],layout:{}});
+ assert.deepEqual(captureSession(wb,workspace).tabs,[saved]);
+});
+test('durable backups avoid serializing undo history',()=>{
+ const backup={saved:'old',editor:{doc:'new'}};
+ const wb={tabs:[{id:'a',kind:'file',path:'a',dirty:true,sessionBackup:()=>backup,hotSnapshot:()=>{throw Error('expensive history snapshot');}}],snapshotLayout:()=>({})};
+ assert.equal(captureSession(wb,workspace).tabs[0].backup.editor.doc,'new');
+});
+
+test('manual flush does not disable future automatic session saves',async()=>{
+ const {startFileSessions}=await import('../src/file-session.js');
+ const previous={window:globalThis.window,document:globalThis.document,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout};
+ const callbacks=new Map();let next=0;
+ globalThis.window={addEventListener(){}};globalThis.document={addEventListener(){}};
+ globalThis.setTimeout=fn=>{callbacks.set(++next,fn);return next;};globalThis.clearTimeout=id=>callbacks.delete(id);
+ const wb={tabs:[],snapshotLayout:()=>({})};const kernel={events:new Map(),get:name=>name==='workbench'?wb:name==='workspace'?{info:()=>workspace}:async()=>({saved:true})};
+ try{await startFileSessions(kernel);const schedule=[...kernel.events.get('tabs.changed')][0];schedule();assert.equal(callbacks.size,1);await wb.session.flush();assert.equal(callbacks.size,0);schedule();assert.equal(callbacks.size,1);}finally{Object.assign(globalThis,previous);}
+});
