@@ -1,5 +1,5 @@
 export function el(tag, cls='', text='') {const e=document.createElement(tag);e.className=cls;e.textContent=text;return e;}
-export function button(text,title,fn,cls='') {const e=el('button',cls,text);e.title=title;e.setAttribute('aria-label',title);e.onclick=()=>Promise.resolve().then(fn).catch(logMessage);return e;}
+export function button(text,title,fn,cls='') {const e=el('button',cls,text);e.title=title;e.setAttribute('aria-label',title);e.onclick=()=>{try{Promise.resolve(fn()).catch(logMessage);}catch(error){logMessage(error);}};return e;}
 export function logMessage(error) { console.debug('[Harness]', error?.message || String(error)); }
 export function form(title,fields,submit='确认',options={}) {return new Promise(resolve=>{
  const d=el('dialog','dialog'+(options.compact?' compact-dialog':''));d.setAttribute('aria-label',options.ariaLabel||title||'Create');const f=el('form');if(title)f.append(el('h2','',title));const inputs={};
@@ -19,5 +19,5 @@ export function menuAt(x,y,items){
  const controller=new AbortController();const close=()=>{controller.abort();menu.remove();};
  for(const item of items){if(!item){menu.append(el('hr'));continue;}const b=button((item.checked===undefined?'':item.checked?'✓  ':'   ')+item.label,item.label,()=>{close();return item.run();});b.disabled=!!item.disabled;b.role=item.checked===undefined?'menuitem':'menuitemcheckbox';if(item.checked!==undefined)b.setAttribute('aria-checked',String(item.checked));menu.append(b);}
  document.body.append(menu);menu.style.left=Math.max(4,Math.min(x,innerWidth-menu.offsetWidth-4))+'px';menu.style.top=Math.max(4,Math.min(y,innerHeight-menu.offsetHeight-4))+'px';menu.tabIndex=-1;menu.focus();
- document.addEventListener('pointerdown',e=>{if(!menu.contains(e.target))close();},{signal:controller.signal});document.addEventListener('keydown',e=>{if(e.key==='Escape')close();if(['ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();const buttons=[...menu.querySelectorAll('button:not(:disabled)')],i=buttons.indexOf(document.activeElement);buttons[(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus();}},{signal:controller.signal});return menu;
+ document.addEventListener('pointerdown',e=>{if(e.button!==2&&!menu.contains(e.target))close();},{signal:controller.signal});document.addEventListener('keydown',e=>{if(e.key==='Escape')close();if(['ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();const buttons=[...menu.querySelectorAll('button:not(:disabled)')],i=buttons.indexOf(document.activeElement);buttons[(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus();}},{signal:controller.signal});return menu;
 }

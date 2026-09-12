@@ -35,3 +35,6 @@ playwright-report/
 *.swp
 *.swo
 *~
+
+# Optional local copy of personal keybindings
+/keybindings.json

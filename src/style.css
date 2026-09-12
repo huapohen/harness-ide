@@ -168,3 +168,6 @@
 /* Keep trackpad boundary gestures inside each pane instead of bouncing the workbench. */
 html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 #app,#app *,#app .cm-editor .cm-scroller{overscroll-behavior:none}
+
+/* Hidden custom title bar still reserves the native macOS title-bar hit area. */
+.view-hide-titlebar{padding-top:28px}
