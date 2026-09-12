@@ -171,3 +171,7 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 
 /* Hidden custom title bar still reserves the native macOS title-bar hit area. */
 .view-hide-titlebar{padding-top:28px}
+
+/* Settings stays at the foot of the activity bar and appears on hover/focus. */
+.activity>.activity-button[data-panel-id="settings"]{order:1;margin-top:auto;margin-bottom:4px;flex-shrink:0;opacity:0;transition:opacity .12s ease;-webkit-user-drag:none}
+.activity>.activity-button[data-panel-id="settings"]:hover,.activity>.activity-button[data-panel-id="settings"]:focus-visible{opacity:1}
