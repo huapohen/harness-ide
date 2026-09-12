@@ -38,8 +38,8 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
   const entries=await api('list',{path:rel});entries.sort((a,b)=>Number(b.directory)-Number(a.directory)||a.name.localeCompare(b.name));
   for(const entry of entries){
    const p=join(rel,entry.name),row=button('',p,async()=>{markSelection(row,p,entry.directory);if(entry.directory)await toggle();else{await wb.run('file.open')(p,{temporary:true});row.focus();}},'file-row');
-   row.dataset.path=p;row.dataset.dropDirectory=entry.directory?p:parent(p);row.setAttribute('role','treeitem');row.setAttribute('aria-level',String(depth+1));row.setAttribute('aria-selected',String(multi.has(p)));row.classList.toggle('selected',multi.has(p));row.style.paddingLeft=(8+depth*10)+'px';
-   const arrow=el('span','tree-chevron'),children=el('div','tree-children');children.setAttribute('role','group');children.style.setProperty('--guide-left',(16+depth*10)+'px');
+   row.dataset.path=p;row.dataset.dropDirectory=entry.directory?p:parent(p);row.setAttribute('role','treeitem');row.setAttribute('aria-level',String(depth+1));row.setAttribute('aria-selected',String(multi.has(p)));row.classList.toggle('selected',multi.has(p));row.style.paddingLeft=(18+depth*10)+'px';
+   const arrow=el('span','tree-chevron'),children=el('div','tree-children');children.setAttribute('role','group');children.style.setProperty('--guide-left',(26+depth*10)+'px');
    const drawArrow=()=>{arrow.className='tree-chevron'+(entry.directory?' codicon-'+(expanded.has(p)?'chevron-down':'chevron-right'):'');if(entry.directory)row.setAttribute('aria-expanded',String(expanded.has(p)));};
    const toggle=async()=>{if(expanded.has(p)){expanded.delete(p);children.replaceChildren();}else{expanded.add(p);try{await tree(children,p,depth+1);}catch(e){expanded.delete(p);throw e;}}drawArrow();};
    row.onmousedown=e=>{if(e.metaKey)e.preventDefault();};

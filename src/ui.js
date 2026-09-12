@@ -14,10 +14,13 @@ export function saveDecision(title) { return new Promise(resolve=>{
  dialog.append(actions);dialog.onclose=()=>{resolve(answer);dialog.remove();};document.body.append(dialog);dialog.showModal();
  });}
 
+// Release replaced menu listeners; dismiss Escape on keyup so an opening cancel keydown cannot erase the menu.
+let closeActiveMenu;
 export function menuAt(x,y,items){
+ const openedAt=performance.now();closeActiveMenu?.();
  document.querySelector('.context-menu')?.remove();const menu=el('div','context-menu');menu.role='menu';
- const controller=new AbortController();const close=()=>{controller.abort();menu.remove();};
+ const controller=new AbortController();const close=()=>{controller.abort();menu.remove();if(closeActiveMenu===close)closeActiveMenu=null;};closeActiveMenu=close;
  for(const item of items){if(!item){menu.append(el('hr'));continue;}const b=button((item.checked===undefined?'':item.checked?'✓  ':'   ')+item.label,item.label,()=>{close();return item.run();});b.disabled=!!item.disabled;b.role=item.checked===undefined?'menuitem':'menuitemcheckbox';if(item.checked!==undefined)b.setAttribute('aria-checked',String(item.checked));menu.append(b);}
  document.body.append(menu);menu.style.left=Math.max(4,Math.min(x,innerWidth-menu.offsetWidth-4))+'px';menu.style.top=Math.max(4,Math.min(y,innerHeight-menu.offsetHeight-4))+'px';menu.tabIndex=-1;menu.focus();
- document.addEventListener('pointerdown',e=>{if(e.button!==2&&!menu.contains(e.target))close();},{signal:controller.signal});document.addEventListener('keydown',e=>{if(e.key==='Escape')close();if(['ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();const buttons=[...menu.querySelectorAll('button:not(:disabled)')],i=buttons.indexOf(document.activeElement);buttons[(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus();}},{signal:controller.signal});return menu;
+ document.addEventListener('pointerdown',e=>{if(e.timeStamp>openedAt&&e.button!==2&&!menu.contains(e.target))close();},{signal:controller.signal,capture:true});document.addEventListener('keydown',e=>{if(['ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();const buttons=[...menu.querySelectorAll('button:not(:disabled)')],i=buttons.indexOf(document.activeElement);buttons[(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus();}},{signal:controller.signal});document.addEventListener('keyup',e=>{if(e.key==='Escape')close();},{signal:controller.signal});return menu;
 }
