@@ -55,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     var web: WKWebView!
     var child: Process?
     var recentMenu: NSMenu!
+    var autoSaveItem: NSMenuItem!
     func applicationDidFinishLaunching(_ notification: Notification) {
         let menu = NSMenu()
         let appItem = NSMenuItem(); menu.addItem(appItem)
@@ -71,6 +72,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
         for (title, command, key) in [("Save", "files.save", "s"), ("Save As…", "files.saveAs", ""), ("Save All", "files.saveAll", "S")] {
             let item = NSMenuItem(title: title, action: #selector(fileCommand(_:)), keyEquivalent: key); item.target = self; item.representedObject = command; fileMenu.addItem(item)
         }
+        fileMenu.addItem(.separator())
+        autoSaveItem = NSMenuItem(title: "Auto Save", action: #selector(fileCommand(_:)), keyEquivalent: ""); autoSaveItem.target = self; autoSaveItem.representedObject = "files.autoSave"; fileMenu.addItem(autoSaveItem)
         let editItem = NSMenuItem(); editItem.title = "Edit"; menu.addItem(editItem)
         let edit = NSMenu(title: "Edit"); editItem.submenu = edit
         for (title, selector, key) in [("Undo", "undo:", "z"), ("Redo", "redo:", "Z"), ("Cut", "cut:", "x"), ("Copy", "copy:", "c"), ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")] {
@@ -143,6 +146,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
             else if action == "open" || action == "folder" { let panel = NSOpenPanel(); panel.canChooseDirectories = action == "folder"; panel.canChooseFiles = action == "open"; panel.allowsMultipleSelection = false; panel.beginSheetModal(for: window) { response in finish(response == .OK ? panel.url?.path : nil) } }
         }
         if message.name == "windowChrome", let body = message.body as? [String:Any], let action = body["action"] as? String {
+            if action == "autoSave" { autoSaveItem.state = body["enabled"] as? Bool == true ? .on : .off }
             if action == "theme" { let light = body["light"] as? Bool == true; window.appearance = NSAppearance(named: light ? .aqua : .darkAqua); window.backgroundColor = light ? .white : NSColor(calibratedRed: 0.157, green: 0.173, blue: 0.204, alpha: 1) }
             if action == "zoom" { window.zoom(nil) }
             if action == "pageZoom", let factor = body["factor"] as? Double { web.pageZoom = max(0.5, min(2.0, factor)) }

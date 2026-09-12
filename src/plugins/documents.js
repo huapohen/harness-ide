@@ -1,10 +1,16 @@
+import {autoSave,saveQueue} from '../auto-save.js';
 import {csvPreview} from '../csv-preview.js';
 const resultData=bytes=>{let text='';for(let i=0;i<bytes.length;i+=8192)text+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(text);};
 import {imageEditor} from '../image-editor.js';
 import {el,button,logMessage,menuAt} from '../ui.js';
 import {sourceEditor} from '../source-editor.js';
-export default {id:'documents',requires:['api','workbench'],activate(ctx){
+export default {id:'documents',requires:['api','workbench'],async activate(ctx){
  const api=ctx.get('api'),wb=ctx.get('workbench'),viewers=new Map(),pending=new Map();let untitled=0,syncing=false;
+ const enqueueSave=saveQueue(),automatic=autoSave({tabs:()=>wb.tabs,ready:()=>window.harnessHotReady&&!window.harnessHotUpdating,onError:(error,tab)=>logMessage('Auto Save · '+tab.title+': '+error.message)});
+ let autoSaveEnabled=(await api('settings/layout/read')).autoSave===true,togglePending=Promise.resolve();
+ const applyAutoSave=()=>{automatic.set(autoSaveEnabled);window.webkit?.messageHandlers.windowChrome?.postMessage({action:'autoSave',enabled:autoSaveEnabled});};
+ applyAutoSave();ctx.on('tabs.changed',()=>automatic.schedule());ctx.effect(()=>automatic.dispose());
+ ctx.effect(wb.command('files.autoSave','File · Auto Save',()=>{togglePending=togglePending.catch(()=>{}).then(async()=>{const value=!autoSaveEnabled;await api('settings/layout/write',{autoSave:value});autoSaveEnabled=value;applyAutoSave();});return togglePending;}));
  viewers.set('csv',csvPreview);
  ctx.provide('documents',{register(ext,viewer){viewers.set(ext,viewer);return()=>viewers.delete(ext);}});
  function dialog(action,name=''){const handler=window.webkit?.messageHandlers.nativeFiles;if(!handler){logMessage('请在 macOS 应用中使用文件选择框');return Promise.resolve(null);}const id=crypto.randomUUID();return new Promise(resolve=>{pending.set(id,resolve);handler.postMessage({id,action,name});});}
@@ -31,7 +37,8 @@ export default {id:'documents',requires:['api','workbench'],activate(ctx){
   if(imageTypes[ext]){
    const format=p=>({png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp'})[p.split('.').at(-1).toLowerCase()];
    tab.saveAs=async()=>{const destination=await dialog('save',tab.title.replace(/\.[^.]+$/,'.png'));if(!destination)return false;const type=format(destination);if(!type)throw Error('请使用 .png、.jpg 或 .webp 后缀');if(wb.tabs.some(t=>t!==tab&&t.path===destination))throw Error('目标已在其他标签中打开');let v=null;try{v=(await api('external',{action:'read',path:destination})).version;}catch(e){if(!/ENOENT/.test(e.message))throw e;}const encoded=await tab.imageEditor.encode(type),r=await api('external',{action:'write',path:destination,data:encoded.data,version:v});path=destination;external=true;version=r.version;tab.path=path;tab.external=true;tab.id='external:'+path;tab.title=path.split('/').at(-1);tab.imageEditor.markSaved(encoded.snapshot);recent(path);return true;};
-   tab.save=async()=>{if(!tab.dirty)return true;const type=format(path);if(!type){logMessage('此格式请另存为 PNG、JPEG 或 WebP；不会覆盖原始文件');return tab.saveAs();}const encoded=await tab.imageEditor.encode(type),r=await api(external?'external':'write',{action:'write',path,data:encoded.data,version});version=r.version;tab.imageEditor.markSaved(encoded.snapshot);logMessage('已保存 '+tab.title);return true;};
+   tab.save=()=>enqueueSave(async()=>{if(!tab.dirty)return true;const type=format(path);if(!type){logMessage('此格式请另存为 PNG、JPEG 或 WebP；不会覆盖原始文件');return tab.saveAs();}const encoded=await tab.imageEditor.encode(type),r=await api(external?'external':'write',{action:'write',path,data:encoded.data,version});version=r.version;tab.imageEditor.markSaved(encoded.snapshot);logMessage('已保存 '+tab.title);return true;});
+   tab.autoSaveEligible=()=>!!format(path);
    element.replaceChildren(await imageEditor({bytes,mime:imageTypes[ext],tab,wb,save:()=>tab.save(),saveAs:()=>tab.saveAs()}));tab.hotSnapshot=()=>({version,image:tab.imageEditor.snapshot()});tab.hotRestore=async state=>{version=state.version;await tab.imageEditor.restore(state.image);};wb.open(tab);return;
   }
   if(ext==='pdf'){const viewer=viewers.get(ext);if(!viewer)throw Error('PDF plugin disabled');tab.saveAs=async()=>{const destination=await dialog('save',tab.title);if(!destination)return false;let targetVersion=null;try{targetVersion=(await api('external',{action:'read',path:destination})).version;}catch(e){if(!/ENOENT/.test(e.message))throw e;}await api('external',{action:'write',path:destination,data:result.data,version:targetVersion});recent(destination);return true;};tab.dispose=viewer(content,bytes);toolbar.append(el('span','','PDF · '+tab.title));wb.open(tab);if(external)recent(path);return;}
@@ -54,7 +61,8 @@ export default {id:'documents',requires:['api','workbench'],activate(ctx){
   const encode=value=>btoa(Array.from(new TextEncoder().encode(value),x=>String.fromCharCode(x)).join(''));
   tab.saveAs=async()=>{const destination=await dialog('save',tab.title);if(!destination)return false;const collision=wb.tabs.find(t=>t!==tab&&t.path===destination);if(collision){logMessage('目标文件已在另一个标签中打开，请先关闭该标签');return false;}let targetVersion=null;try{targetVersion=(await api('external',{action:'read',path:destination})).version;}catch(e){if(!/ENOENT/.test(e.message))throw e;}
    const value=source.value,r=await api('external',{action:'write',path:destination,data:encode(value),version:targetVersion});version=r.version;saved=value;tab.dirty=source.value!==saved;path=destination;external=true;fresh=false;tab.external=true;tab.path=path;tab.id='external:'+path;tab.title=path.split('/').at(-1);ext=path.split('.').at(-1).toLowerCase();editor.dispose();editor=sourceEditor(source,ext);mode='source';typeLabel.textContent=ext.toUpperCase()+' DOCUMENT';tab.togglePreview=ext==='md'?toggleMode:undefined;show();wb.render();recent(path);return true;};
-  tab.save=async()=>{if(fresh)return tab.saveAs();if(!tab.dirty)return true;const value=source.value,r=await api(external?'external':'write',{action:'write',path,data:encode(value),version});version=r.version;saved=value;tab.dirty=source.value!==saved;for(const other of wb.tabs)if(other!==tab&&other.path===tab.path&&!!other.external===!!tab.external)other.acceptSaved?.(version,saved);wb.render();logMessage('已保存 '+tab.title);return true;};
+  tab.save=()=>enqueueSave(async()=>{if(fresh)return tab.saveAs();if(!tab.dirty)return true;const value=source.value,r=await api(external?'external':'write',{action:'write',path,data:encode(value),version});version=r.version;saved=value;tab.dirty=source.value!==saved;for(const other of wb.tabs)if(other!==tab&&other.path===tab.path&&!!other.external===!!tab.external)other.acceptSaved?.(version,saved);wb.render();logMessage('已保存 '+tab.title);return true;});
+  tab.autoSaveEligible=()=>!fresh;
   show();wb.open(tab);if(external)recent(path);
  }
  window.harnessRunCommand=id=>{try{Promise.resolve(wb.run(id)).catch(logMessage);}catch(e){logMessage(e);}};

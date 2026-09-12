@@ -4,6 +4,7 @@ cd "$(dirname "$0")/.."
 npm run build
 node scripts/prepare-pty.mjs
 app="build/Harness IDE.app"
+mkdir -p build
 staging="$(mktemp -d "$PWD/build/.package.XXXXXX")"
 trap 'rm -rf "$staging"' EXIT
 bundle="$staging/Harness IDE.app"

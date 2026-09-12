@@ -24,11 +24,12 @@ export default {id:'settings',requires:['routes'],async activate(ctx){
  let layoutPending=Promise.resolve();
  ctx.effect(ctx.get('routes').register('settings/layout/read',readLayout));
  ctx.effect(ctx.get('routes').register('settings/layout/write',q=>{
+  if(q.autoSave!==undefined&&typeof q.autoSave!=='boolean')throw Error('Invalid Auto Save setting');
   const secondaryWidth=q.secondaryWidth;if(secondaryWidth!==undefined&&(!Number.isFinite(secondaryWidth)||secondaryWidth<180||secondaryWidth>10000))throw Error('Invalid sidebar width');
   const visibility=q.visibility;if(visibility!==undefined&&(!visibility||Object.entries(visibility).some(([k,v])=>!['activity','sidebar','status','titlebar','secondary'].includes(k)||typeof v!=='boolean')))throw Error('Invalid visibility');
   const order=q.activityOrder;if(order!==undefined&&(!Array.isArray(order)||order.length>100||order.some(id=>typeof id!=='string'||! /^[a-z0-9-]+$/.test(id))||new Set(order).size!==order.length))throw Error('Invalid activity order');
   const font=q.font;if(font?.terminalSize!==undefined&&(!Number.isFinite(font.terminalSize)||font.terminalSize<8||font.terminalSize>40))throw Error('Invalid terminal font size');if(font!==undefined&&(!Number.isFinite(font.size)||font.size<8||font.size>40||typeof font.family!=='string'||!font.family.trim()||font.family.length>100||(font.sidebarSize!==undefined&&(!Number.isFinite(font.sidebarSize)||font.sidebarSize<8||font.sidebarSize>40))))throw Error('Invalid font settings');
-  const task=layoutPending.then(async()=>{const current=await readLayout(),temp=layoutFile+'.'+randomUUID()+'.tmp';const value={...current,...(secondaryWidth===undefined?{}:{secondaryWidth}),...(visibility===undefined?{}:{visibility}),...(order===undefined?{}:{activityOrder:order}),...(font===undefined?{}:{font})};try{await fs.writeFile(temp,JSON.stringify(value,null,2)+'\n',{mode:0o600});await fs.rename(temp,layoutFile);}finally{await fs.rm(temp,{force:true});}return value;});layoutPending=task.catch(()=>{});return task;
+  const task=layoutPending.then(async()=>{const current=await readLayout(),temp=layoutFile+'.'+randomUUID()+'.tmp';const value={...current,...(q.autoSave===undefined?{}:{autoSave:q.autoSave}),...(secondaryWidth===undefined?{}:{secondaryWidth}),...(visibility===undefined?{}:{visibility}),...(order===undefined?{}:{activityOrder:order}),...(font===undefined?{}:{font})};try{await fs.writeFile(temp,JSON.stringify(value,null,2)+'\n',{mode:0o600});await fs.rename(temp,layoutFile);}finally{await fs.rm(temp,{force:true});}return value;});layoutPending=task.catch(()=>{});return task;
  }));
 
  const pluginFile=path.join(directory,'plugins.json'),optional=new Set(['git','remote','terminal','markdown','html','pdf','timeline','search','editing']);
