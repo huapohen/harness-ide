@@ -1,18 +1,18 @@
 import {ViewPlugin,EditorView} from '@codemirror/view';
-import {markdownHeadings,stickyMarkdownHeadings} from '../shared/markdown-headings.js';
+import {sourceScopes,activeScopes} from '../shared/sticky-scopes.js';
 
-export const markdownSticky=ViewPlugin.fromClass(class{
+export const sourceSticky=(ext)=>ViewPlugin.fromClass(class{
  constructor(view){
-  this.view=view;this.headings=markdownHeadings(view.state.doc.toString());this.dom=document.createElement('div');this.dom.className='markdown-sticky';this.dom.setAttribute('aria-label','Markdown 当前章节');this.dom.hidden=true;view.dom.append(this.dom);
+  this.view=view;this.headings=sourceScopes(view.state.doc.toString(),ext);this.dom=document.createElement('div');this.dom.className='markdown-sticky';this.dom.setAttribute('aria-label','当前代码作用域');this.dom.hidden=true;view.dom.append(this.dom);
   this.schedule=()=>view.requestMeasure({key:this,read:()=>this.measure(),write:data=>this.render(data)});
   view.scrollDOM.addEventListener('scroll',this.schedule,{passive:true});this.schedule();
  }
- update(update){if(update.docChanged)this.headings=markdownHeadings(update.state.doc.toString());this.schedule();}
+ update(update){if(update.docChanged)this.headings=sourceScopes(update.state.doc.toString(),ext);this.schedule();}
  measure(){
   const view=this.view,rect=view.scrollDOM.getBoundingClientRect();
   if(!rect.height)return {rows:[]};
   const top=Math.max(0,rect.top-view.documentTop),block=view.lineBlockAtHeight(top),first=view.state.doc.lineAt(block.from).number;
-  const rows=stickyMarkdownHeadings(this.headings,first),gutter=view.dom.querySelector('.cm-gutters');
+  const rows=activeScopes(this.headings,first),gutter=view.dom.querySelector('.cm-gutters');
   return {rows:rows.map(h=>({...h,spans:view.harnessHighlightLine?.(h.line)||[{text:h.text}]})),lineHeight:view.defaultLineHeight,gutter:gutter?.getBoundingClientRect().width||48,left:view.scrollDOM.scrollLeft,width:rect.width,top:rect.top-view.dom.getBoundingClientRect().top};
  }
  render(data){

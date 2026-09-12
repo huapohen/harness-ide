@@ -41,11 +41,28 @@ npm test
 - 文件与终端共享标签栏。固定标签用爱心替换关闭按钮，点击爱心取消固定。未保存文件用圆点替换关闭按钮，标签不会因此变宽。
 - 从 Finder 拖文件到中央文件区会打开原文件；拖到目录树会复制进工作区。
 - 文本使用 CodeMirror 6 和 TextMate 语法高亮，支持 SSH config、SQL 及常见代码。提供查找、替换、正则、保持大小写和全部匹配项选择。
-- Markdown 源码编辑支持多级标题吸顶（最多五级）、行号和点击跳回原行；滚动进入新章节时更新。预览支持标题目录和代码块语法高亮；表格采用统一雾灰底色及暗色网格。代码块和引用使用灰色背景。
+- 所有文本编辑器均启用作用域吸顶（最多五行），保留源码颜色、缩进和行号，支持横向滚动同步、点击跳转和编辑后更新。Markdown 按标题层级识别；代码与配置文件按结构识别，详见下表。Markdown 预览支持标题目录和代码块语法高亮；表格采用统一雾灰底色及暗色网格。代码块和引用使用灰色背景。
 - 支持图片查看与编辑、PDF 阅读、受限 HTML 预览；CSV 可编辑或按表格查看。
 - Word、PowerPoint、Excel 等 Office 文件通过 LibreOffice 转换为 PDF 预览，不提供 Office 原生编辑。此功能需要可用的 LibreOffice，可通过 `HARNESS_SOFFICE` 指定程序路径。
 - 设置中可分别配置编辑器、侧栏、底部终端字号，另有字体、目录树和 Markdown 文字颜色、主题等选项。
 - 文件保存前检查版本，防止覆盖外部修改。未保存文件关闭时可选择保存、不保存或取消。运行任务的终端受到关闭保护。
+
+## 编辑器吸顶范围
+
+[VS Code Sticky Scroll](https://code.visualstudio.com/docs/editing/getting-started/userinterface#sticky-scroll) 使用大纲、折叠范围和缩进模型逐级回退，并非只支持 Markdown、Python。Harness 的每个文本编辑器（含分屏）都挂载吸顶功能；没有可识别的嵌套结构时不显示空栏。
+
+| 文件类型 | 识别结构 |
+| --- | --- |
+| Markdown | ATX / Setext 标题层级，排除围栏代码块中的标题 |
+| Python / PYw | 类、同步或异步函数、条件、循环等缩进块；支持跨行参数，跳过多行字符串和注释 |
+| JS / TS / JSX / TSX、C / C++ / C#、Java、Go、Rust、Swift、Kotlin、PHP 等 | 花括号、数组和缩进块；独占一行的花括号尽量关联前一行声明 |
+| JSON / JSONC / JSONL、CSS / SCSS / Less | 对象、数组、样式块和缩进结构 |
+| HTML / XML / SVG / Vue / Svelte、JSX / TSX | 嵌套标签，排除注释和自闭合标签 |
+| Shell / Bash / Zsh、Ruby、SQL、Lua | 关键字块以及缩进结构 |
+| YAML、INI、TOML、SSH config | 缩进、节标题或 Host / Match 分组 |
+| 其他文本文件 | 通用缩进回退，支持显式 region / endregion 区域 |
+
+吸顶从原文复用语法高亮，未引入另一套颜色。示例见 [sticky-scroll-demo.py](example/sticky-scroll-demo.py)。结构识别是轻量规则，不是完整语言服务器；复杂嵌入语言、模板和特殊语法可能与 VS Code 扩展的大纲结果不同。当前没有 VS Code 扩展宿主，因此不宣称兼容所有第三方大纲提供者。
 
 ## 快捷键与本地配置
 
