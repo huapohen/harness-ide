@@ -1,0 +1,18 @@
+import {el,button,logMessage} from '../ui.js';
+export default {id:'git',requires:['api','workbench','workspace'],activate(ctx){
+ const api=ctx.get('api'),wb=ctx.get('workbench');let alive=true,repository='.';const git=q=>api('git',{...q,repo:repository});
+ async function diff(staged=false,path){try{const {output}=await git({action:staged?'staged':'diff',path});const element=el('section','diff-view tab-content');element.append(el('h3','',path||'Changes'));const pre=el('pre');for(const line of (output||'No changes.').split('\n'))pre.append(el('div',line.startsWith('+')?'diff-add':line.startsWith('-')?'diff-del':'',line||' '));element.append(pre);wb.open({id:'diff:'+Date.now(),title:path||'Git diff',kind:'diff',element});}catch(e){logMessage(e);}}
+ async function panel(container){
+  container.append(el('p','panel-note','Loading…'));
+  try{const {repositories}=await git({action:'repositories'});if(repositories.length&&!repositories.some(r=>r.path===repository))repository=repositories[0].path;const data=await git({action:'status'});if(!alive||!container.isConnected)return;container.replaceChildren();
+   if(repositories.length>1){const select=el('select','git-message');select.setAttribute('aria-label','Repository');for(const repo of repositories){const option=el('option','',repo.root.split('/').pop()+' · '+repo.path);option.value=repo.path;select.append(option);}select.value=repository;select.onchange=()=>{repository=select.value;wb.showPanel('git');};container.append(select);}
+   if(!data.repository){wb.$('#git-branch').textContent='';container.append(el('p','panel-note','No Git repository in this workspace.'),button('Open Folder…','Open a repository',()=>wb.run('workspace.open')),button('Initialize Repository','Initialize Repository',async()=>{await git({action:'init'});await wb.showPanel('git');}));return;}
+   wb.$('#git-branch').textContent=data.branch;
+   const header=el('div','git-actions');header.append(el('strong','',data.root.split('/').pop()),el('span','',data.branch),button('↻','Refresh',()=>wb.showPanel('git')));container.append(header);
+   const message=el('input','git-message');message.placeholder='Message';message.setAttribute('aria-label','Commit message');const commit=button('✓ Commit','Commit staged changes',async()=>{await git({action:'commit',message:message.value});await wb.showPanel('git');});commit.disabled=true;message.oninput=()=>commit.disabled=!message.value.trim()||!data.files.some(f=>f.x!==' '&&f.x!=='?');container.append(message,commit);
+   for(const [title,staged]of [['Staged Changes',true],['Changes',false]]){const files=data.files.filter(f=>staged?f.x!==' '&&f.x!=='?':f.y!==' '||f.x==='?');if(!files.length)continue;const group=el('details','git-group');group.open=true;group.append(el('summary','',title+'  '+files.length));for(const f of files){const row=el('div','git-file');row.append(button(f.path,'Open changes',()=>f.x==='?'?wb.run('file.open')(repository==='.'?f.path:repository+'/'+f.path):diff(staged,f.path)),el('span','',staged?f.x:f.y),button(staged?'−':'+',staged?'Unstage':'Stage',async()=>{await git({action:staged?'unstage':'stage',path:f.path});await wb.showPanel('git');}));group.append(row);}container.append(group);}
+   if(!data.files.length)container.append(el('p','panel-note','No changes.'));
+  }catch(e){container.replaceChildren(el('p','panel-note',e.message));}
+ }
+ ctx.effect(()=>{alive=false;wb.$('#git-branch').textContent='';});ctx.effect(wb.panel('git','Source Control','⑂',panel));ctx.effect(wb.command('git.open','Git · Source Control',()=>wb.showPanel('git')));ctx.on('workspace.changed',()=>{wb.$('#git-branch').textContent='';});
+}};

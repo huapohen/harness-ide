@@ -1,0 +1,1 @@
+export default {id:'pdf',requires:['documents'],activate(ctx){ctx.effect(ctx.get('documents').register('pdf',(container,bytes)=>{const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const frame=document.createElement('iframe');frame.title='PDF 预览';frame.src=url;container.append(frame);return()=>URL.revokeObjectURL(url);}));}};

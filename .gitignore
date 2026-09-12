@@ -1,0 +1,37 @@
+# Dependencies and generated applications
+node_modules/
+dist/
+build/
+*.app/
+
+# Local runtime state, installed plugins, and user data
+user/
+history/
+hot-updates/
+output/
+.playwright-cli/
+.cache/
+coverage/
+test-results/
+playwright-report/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.mobileprovision
+.ssh/
+.vscode/
+
+# OS/editor files and transient output
+.DS_Store
+*.log
+*.tmp
+*.swp
+*.swo
+*~

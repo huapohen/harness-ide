@@ -1,0 +1,12 @@
+import entries from '../plugins.config.js';
+import fs from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+const hash=s=>createHash('sha256').update(s).digest('hex');
+const files=async dir=>{const out=[];for(const entry of await fs.readdir(dir,{withFileTypes:true})){const p=dir+'/'+entry.name;if(entry.isDirectory())out.push(...await files(p));else out.push(p);}return out.sort();};
+const digest=async paths=>hash((await Promise.all(paths.map(async p=>p+'\n'+(await fs.readFile(p,'utf8')).replace(p==='native/App.swift'?/        let viewItem = NSMenuItem\(\);[\s\S]*?(?=        NSApplication.shared.mainMenu = menu)/:/(?!)/g,'')))).join('\n'));
+const js=await digest([...(await files('src')).filter(p=>!p.endsWith('.css')),'plugins.config.js',...await files('public'),...await files('shared')]);
+const css=hash(await fs.readFile('src/style.css'));
+const runtime=await digest(['server/index.mjs','server/hot-updates.mjs','server/plugins/terminal.mjs','server/plugins/workspace.mjs','server/workspace.mjs','server/shell-integration.mjs','server/terminal-state.mjs','src/kernel.js','package.json','native/App.swift']);
+const backend=await digest((await files('server')).filter(p=>!['server/index.mjs','server/hot-updates.mjs','server/plugins/terminal.mjs','server/plugins/workspace.mjs','server/workspace.mjs','server/shell-integration.mjs','server/terminal-state.mjs'].includes(p)));
+const version=hash(js+css+runtime+backend).slice(0,20);
+await fs.writeFile('dist/hot-manifest.json',JSON.stringify({version,js,css,runtime,backend,plugins:entries.filter(e=>e.enabled!==false).map(e=>e.id),builtAt:new Date().toISOString()}));

@@ -1,0 +1,76 @@
+import {fileIcon} from '../file-icons.js';
+import {el,button,form,logMessage,menuAt} from '../ui.js';
+export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
+ const api=ctx.get('api'),wb=ctx.get('workbench');let info=await api('info'),clipboard=null,compare=null,selected='.',selectedDirectory=true,rootExpanded=true;const expanded=new Set(),multi=new Set();
+ const parent=p=>p.includes('/')?p.slice(0,p.lastIndexOf('/')):'.';
+ const join=(p,n)=>p==='.'?n:p+'/'+n;
+ const update=()=>{wb.$('#workspace-title').textContent=`${info.host?info.host+' / ':''}${info.name}`;ctx.emit('workspace.changed',info);};
+ ctx.provide('workspace',{info:()=>info,async connect(root,host){if(!await wb.closeAll())return;info=await api('connect',{root,host});clipboard=compare=null;selected='.';selectedDirectory=true;rootExpanded=true;expanded.clear();multi.clear();update();await wb.showPanel('explorer');if(wb.commands.has('terminal.new'))await wb.run('terminal.new');}});
+ window.harnessDropFiles=async(paths,x,y)=>{try{const node=document.elementFromPoint(x,y);if(!node?.closest('.sidebar')||wb.$('.sidebar').dataset.panel!=='explorer')return;const dir=node.closest('[data-drop-directory]')?.dataset.dropDirectory||'.';await api('manage',{action:'import',path:dir,sources:paths});rootExpanded=true;if(dir!=='.')expanded.add(dir);await wb.showPanel('explorer');logMessage('已复制到 '+dir);}catch(e){logMessage(e.message);}};
+ ctx.effect(()=>delete window.harnessDropFiles);
+ const manage=(action,path,extra={})=>api('manage',{action,path,...extra});
+ const refresh=()=>wb.showPanel('explorer');
+ async function newFile(name='',dir=selectedDirectory?selected:parent(selected),directory=false){const data=await form('',[{name:'name',label:'',ariaLabel:directory?'Folder name':'File name',value:name}],'创建',{compact:true,ariaLabel:directory?'New Folder':'New File'});if(!data)return;const p=join(dir,data.name);await manage('create',p,{directory});rootExpanded=true;let ancestor=dir;while(ancestor!=='.'){expanded.add(ancestor);ancestor=parent(ancestor);}await refresh();if(!directory)await wb.run('file.open')(p);}
+ async function closeAffected(p){for(const t of [...wb.tabs].filter(t=>t.path===p||t.path?.startsWith(p+'/')))if(!await wb.close(t))return false;return true;}
+ async function rename(p){const data=await form('重命名',[{name:'name',label:'新名称',value:p.split('/').at(-1)}]);if(!data)return;if(!await closeAffected(p))return;await manage('rename',p,{destination:join(parent(p),data.name)});await refresh();}
+ async function remove(p){if(!confirm(`将“${p}”移到${info.host?'远端 .harness-trash':'废纸篓'}？`))return;if(!await closeAffected(p))return;await manage('delete',p);for(const x of [...multi])if(x===p||x.startsWith(p+'/'))multi.delete(x);await refresh();}
+ async function copyText(text){const handler=window.webkit?.messageHandlers.clipboard;if(handler)handler.postMessage({id:crypto.randomUUID(),action:'write',text});else await navigator.clipboard.writeText(text);}
+ async function paste(dir){if(!clipboard)return;const data=await form('粘贴到 '+dir,[{name:'name',label:'名称',value:clipboard.path.split('/').at(-1)}]);if(!data)return;if(clipboard.cut&&!await closeAffected(clipboard.path))return;await manage(clipboard.cut?'move':'copy',clipboard.path,{destination:join(dir,data.name)});if(clipboard.cut)clipboard=null;await refresh();}
+ async function output(title,p,action,extra={}){const result=await manage(action,p,extra);const element=el('section','tab-content diff-view');element.append(el('h2','',title),el('pre','',result.output||'没有记录或差异'));wb.open({id:crypto.randomUUID(),title,kind:'file',element});}
+ async function openSide(p){const previous=wb.active();await wb.run('file.open')(p);const t=wb.active();if(previous&&previous!==t)wb.split(previous,t,'vertical');}
+ async function openWith(p){const d=await form('打开方式',[{name:'mode',label:'输入 source（源码）或 preview（预览）',value:'source'}]);if(!d)return;if(!['source','preview'].includes(d.mode))throw Error('请输入 source 或 preview');await wb.run('file.open')(p);wb.active()?.showMode?.(d.mode);}
+ async function terminal(dir){await wb.run('terminal.new');const t=wb.current();const absolute=(await manage('absolute',dir)).path;const command="cd -- '"+absolute.replaceAll("'","'\\''")+"'\r";let attempts=0;const timer=setInterval(()=>{if(t.sendData&&t.isReady){clearInterval(timer);t.sendData(command);}else if(++attempts>100){clearInterval(timer);logMessage('终端尚未就绪，请重试');}},100);}
+ function context(e,p='.',directory=true){selected=p;selectedDirectory=directory;e.preventDefault();e.stopPropagation();const dir=directory?p:parent(p);const item=(label,run,disabled=false)=>({label,run,disabled});
+ const rows=[];
+ if(directory)rows.push(item('New File…',()=>newFile('',dir)),item('New Folder…',()=>newFile('',dir,true)),null);
+ if(!directory)rows.push(item('Open to the Side',()=>openSide(p)),item('Open With…',()=>openWith(p)));
+ if(!info.host)rows.push(item('Reveal in Finder',()=>manage('reveal',p)));
+ rows.push(item('Open in Integrated Terminal',()=>terminal(dir)),null);
+ if(!info.host&&window.webkit?.messageHandlers.windowChrome)rows.push(item('Share…',async()=>{const {path}=await manage('absolute',p);window.webkit.messageHandlers.windowChrome.postMessage({action:'share',path});}),null);
+ if(!directory)rows.push(item(compare?'Compare with Selected':'Select for Compare',()=>{if(compare){const other=compare;compare=null;return output('Compare: '+other+' ↔ '+p,p,'compare',{other});}compare=p;}),item('Open Timeline',()=>wb.run('history.open',p)),null);
+ if(p!=='.')rows.push(item('Cut',()=>{clipboard={path:p,cut:true};}),item('Copy',()=>{clipboard={path:p,cut:false};}));
+ rows.push(item('Paste',()=>paste(dir),!clipboard),null,item('Copy Path',async()=>copyText((await Promise.all(([...multi].length?[...multi]:[p]).map(async x=>(await manage('absolute',x)).path))).join('\n'))),item('Copy Relative Path',()=>copyText([...multi].join('\n')||p)));
+ if(p!=='.')rows.push(null,item('Rename…',()=>rename(p)),item('Delete',async()=>{for(const x of [...multi].filter(x=>![...multi].some(parent=>x!==parent&&x.startsWith(parent+'/'))))await remove(x);}));
+ rows.push(null,item('Refresh',refresh));menuAt(e.clientX,e.clientY,rows);
+ }
+ function markSelection(row,p,directory,additive=false){if(!additive){multi.clear();multi.add(p);}else if(multi.has(p))multi.delete(p);else multi.add(p);ctx.emit('explorer.selected',{path:p,directory});selected=p;selectedDirectory=directory;for(const r of wb.$('#sidebar-body').querySelectorAll('.file-row')){const chosen=multi.has(r.dataset.path);r.classList.toggle('selected',chosen);r.setAttribute('aria-selected',String(chosen));}}
+ async function tree(container,rel='.',depth=0){
+  const entries=await api('list',{path:rel});entries.sort((a,b)=>Number(b.directory)-Number(a.directory)||a.name.localeCompare(b.name));
+  for(const entry of entries){
+   const p=join(rel,entry.name),row=button('',p,async()=>{markSelection(row,p,entry.directory);if(entry.directory)await toggle();else{await wb.run('file.open')(p);row.focus();}},'file-row');
+   row.dataset.path=p;row.dataset.dropDirectory=entry.directory?p:parent(p);row.setAttribute('role','treeitem');row.setAttribute('aria-level',String(depth+1));row.setAttribute('aria-selected',String(multi.has(p)));row.classList.toggle('selected',multi.has(p));row.style.paddingLeft=(8+depth*10)+'px';
+   const arrow=el('span','tree-chevron'),children=el('div','tree-children');children.setAttribute('role','group');children.style.setProperty('--guide-left',(16+depth*10)+'px');
+   const drawArrow=()=>{arrow.className='tree-chevron'+(entry.directory?' codicon-'+(expanded.has(p)?'chevron-down':'chevron-right'):'');if(entry.directory)row.setAttribute('aria-expanded',String(expanded.has(p)));};
+   const toggle=async()=>{if(expanded.has(p)){expanded.delete(p);children.replaceChildren();}else{expanded.add(p);try{await tree(children,p,depth+1);}catch(e){expanded.delete(p);throw e;}}drawArrow();};
+   row.onmousedown=e=>{if(e.metaKey)e.preventDefault();};
+   row.onclick=e=>{Promise.resolve().then(async()=>{markSelection(row,p,entry.directory,e.metaKey);if(e.altKey)await copyText(e.shiftKey?p:(await manage('absolute',p)).path);if(e.metaKey){row.focus();return;}if(entry.directory)await toggle();else{await wb.run('file.open')(p);row.focus();}}).catch(logMessage);};
+   drawArrow();row.append(arrow);
+   if(!entry.directory){const icon=fileIcon(entry.name),glyph=el('span','tree-file-icon',icon.character);glyph.setAttribute('aria-hidden','true');glyph.style.setProperty('--file-icon-dark',icon.dark);glyph.style.setProperty('--file-icon-light',icon.light);row.append(glyph);}
+   row.append(el('span','tree-label',entry.name));row.oncontextmenu=e=>{if(!multi.has(p))markSelection(row,p,entry.directory);context(e,p,entry.directory);};
+   row.onkeydown=e=>{const run=fn=>{e.preventDefault();Promise.resolve().then(fn).catch(logMessage);};if(e.key==='F2')run(()=>rename(p));if(e.key==='Delete')run(()=>remove(p));
+    if(e.key==='ArrowRight'&&entry.directory)run(async()=>{if(!expanded.has(p))await toggle();else children.querySelector('.file-row')?.focus();});
+    if(e.key==='ArrowLeft')run(async()=>{if(entry.directory&&expanded.has(p))await toggle();else container.previousElementSibling?.focus();});
+    if(e.key==='ArrowDown'||e.key==='ArrowUp')run(()=>{const rows=[...wb.$('#sidebar-body').querySelectorAll('.file-row')],i=rows.indexOf(row);rows[i+(e.key==='ArrowDown'?1:-1)]?.focus();});
+   };
+   row.onfocus=()=>{selected=p;selectedDirectory=entry.directory;};if(entry.directory){const branch=el('div','tree-branch');row.classList.add('tree-folder');row.style.top=((depth+1)*22)+'px';branch.append(row,children);container.append(branch);}else container.append(row,children);if(entry.directory&&expanded.has(p))await tree(children,p,depth+1);
+  }
+ }
+ ctx.effect(wb.panel('explorer','Explorer','▱',async container=>{
+  container.oncontextmenu=e=>context(e);const root=button('',info.name,async()=>{selected='.';selectedDirectory=true;rootExpanded=!rootExpanded;await refresh();},'tree-root');root.setAttribute('aria-expanded',String(rootExpanded));root.append(el('span','tree-chevron codicon-'+(rootExpanded?'chevron-down':'chevron-right')),el('span','',info.name));const rows=el('div','tree-root-children');rows.setAttribute('role','tree');rows.setAttribute('aria-label','文件资源管理器');container.append(root,rows);
+  if(rootExpanded)try{await tree(rows);}catch(e){rows.append(el('p','panel-note',e.message));}
+ }));
+ for(const [id,name]of [['explorer.newText','file.txt'],['explorer.newMarkdown','file.md'],['explorer.newUnnamed','file']])ctx.effect(wb.command(id,'Explorer · 新建 '+name,()=>newFile(name)));
+ const absolute=t=>t.external?Promise.resolve(t.path):manage('absolute',t.path).then(r=>r.path);
+ ctx.effect(wb.command('files.copyPath','文件 · 复制路径',async(items,relative=false)=>{const paths=[];for(const t of items.filter(t=>t.path)){if(!relative)paths.push(await absolute(t));else if(!t.external)paths.push(t.path);else{const a=info.root.split('/').filter(Boolean),b=t.path.split('/').filter(Boolean);while(a.length&&b.length&&a[0]===b[0]){a.shift();b.shift();}paths.push([...a.map(()=> '..'),...b].join('/'));}}if(paths.length)await copyText(paths.join('\n'));}));
+ ctx.effect(wb.command('files.revealFinder','文件 · 在 Finder 中显示',async t=>{if(info.host&&!t.external)throw Error('远程文件无法在本机 Finder 中显示');const path=await absolute(t),handler=window.webkit?.messageHandlers.windowChrome;if(handler)handler.postMessage({action:'reveal',path});else if(!t.external)await manage('reveal',t.path);}));
+ ctx.effect(wb.command('explorer.revealFile','文件 · 在资源管理器中显示',async t=>{let p=t.path;if(t.external){if(!p.startsWith(info.root+'/'))throw Error('文件不在当前工作区，可使用 Reveal in Finder');p=p.slice(info.root.length+1);}rootExpanded=true;let ancestor=parent(p);while(ancestor!=='.'){expanded.add(ancestor);ancestor=parent(ancestor);}selected=p;multi.clear();multi.add(p);wb.$('.sidebar').classList.remove('collapsed');await refresh();const row=[...wb.$('#sidebar-body').querySelectorAll('.file-row')].find(r=>r.dataset.path===p);row?.scrollIntoView({block:'nearest'});row?.focus();}));
+ ctx.effect(wb.command('explorer.newFile','Explorer · 新建文件',newFile));
+ ctx.effect(wb.command('workspace.open','工作区 · 打开本地文件夹',async()=>{const data=await form('打开工作区',[{name:'root',label:'文件夹绝对路径',value:info.host?'':info.root}],'打开');if(data)await ctx.get('workspace').connect(data.root,null);}));
+ ctx.effect(wb.command('explorer.delete','Explorer · 删除所选文件',async()=>{for(const p of [...multi].filter(p=>p!=='.'))await remove(p);}));
+ ctx.effect(wb.command('explorer.refresh','Explorer · 刷新',refresh));
+ const collapse=async()=>{expanded.clear();await refresh();};
+ ctx.effect(wb.command('explorer.newFolder','Explorer · 新建文件夹',()=>newFile('',selectedDirectory?selected:parent(selected),true)));
+ ctx.effect(wb.command('explorer.collapseAll','Explorer · 全部折叠',collapse));
+ const actions=[['new-file','新建文件',()=>newFile('')],['new-folder','新建文件夹',()=>newFile('',selectedDirectory?selected:parent(selected),true)],['refresh','刷新',refresh],['collapse-all','全部折叠',collapse]].map(([icon,title,run])=>button('',title,run,'explorer-tool codicon-'+icon));
+ wb.$('#explorer-actions').append(...actions);ctx.effect(()=>actions.forEach(b=>b.remove()));update();await refresh();
+}};

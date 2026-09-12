@@ -1,0 +1,2 @@
+import {Worker} from 'node:worker_threads';
+export function workspaceSearch(w,q){return new Promise((resolve,reject)=>{const worker=new Worker(new URL('./search-worker.mjs',import.meta.url),{workerData:{root:w.root,host:w.host,query:q}});const timer=setTimeout(()=>{worker.terminate();reject(Error('搜索超时，请缩小范围或简化正则表达式'));},10000);worker.once('message',r=>{clearTimeout(timer);worker.terminate();r.error?reject(Error(r.error)):resolve(r);});worker.once('error',e=>{clearTimeout(timer);reject(e);});});}
