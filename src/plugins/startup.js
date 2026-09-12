@@ -1,6 +1,8 @@
+import {restoreLastSession} from '../file-session.js';
 export default {id:'startup',requires:['workbench','workspace'],async activate(ctx){
  if(sessionStorage.getItem('harness-hot-snapshot'))return;
  const wb=ctx.get('workbench');
+ if(await restoreLastSession(ctx))return;
  if(wb.commands.has('terminal.new'))await wb.run('terminal.new');
  const info=ctx.get('workspace').info();
  if(info.name==='example' && wb.commands.has('file.open')) {

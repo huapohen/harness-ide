@@ -1,3 +1,4 @@
+import {sessionStore} from '../session-store.mjs';
 import {cleanReleaseCache} from '../cache-maintenance.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -9,6 +10,9 @@ export default {id:'settings',requires:['routes'],async activate(ctx){
  const maintenance=globalThis[Symbol.for('harness.cacheMaintenance')] ||= {clients:new Map(),last:0,pending:null};
  ctx.effect(ctx.get('routes').register('settings/cache/maintain',async q=>{if(typeof q.client!=='string'||q.client.length>100||!Array.isArray(q.versions)||q.versions.length>20||q.versions.some(v=>! /^[a-f0-9]{20}$/.test(v)))throw Error('Invalid cache lease');maintenance.clients.set(q.client,q.versions);if(maintenance.pending)return maintenance.pending;if(Date.now()-maintenance.last<300000)return {removed:0};const root=process.env.HARNESS_UPDATES_DIR||path.join(os.homedir(),'.hot_plugging/hot-updates');const keep=[...maintenance.clients.values()].flat();const own=import.meta.url.match(/hot-updates\/([a-f0-9]{20})\//);if(own)keep.push(own[1]);try{const bundled=JSON.parse(await fs.readFile(path.join(path.dirname(process.argv[1]),'../dist/hot-manifest.json'),'utf8'));keep.push(bundled.version);}catch{}maintenance.pending=cleanReleaseCache(root,keep).then(result=>{maintenance.last=Date.now();return result;}).finally(()=>maintenance.pending=null);return maintenance.pending;}));
  const directory=process.env.HARNESS_SETTINGS_DIR||path.join(os.homedir(),'.hot_plugging','user');
+ const sessions=sessionStore(path.join(directory,'sessions'));
+ ctx.effect(ctx.get('routes').register('settings/session/read',async q=>({session:await sessions.read(q.workspace)})));
+ ctx.effect(ctx.get('routes').register('settings/session/write',q=>sessions.write(q.session)));
  await fs.mkdir(directory,{recursive:true});const file=path.join(directory,'keybindings.json');
  try{await fs.writeFile(file,JSON.stringify(defaults,null,2)+'\n',{flag:'wx',mode:0o600});}catch(e){if(e.code!=='EEXIST')throw e;}
  const read=async()=>{const text=await fs.readFile(file,'utf8');let bindings,error;try{bindings=validateBindings(JSON.parse(text));}catch(e){error=e.message;}return {path:file,text,version:hash(text),bindings,error};};

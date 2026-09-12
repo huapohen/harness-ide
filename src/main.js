@@ -1,3 +1,4 @@
+import {startFileSessions} from './file-session.js';
 import {pluginController} from './plugin-controller.js';
 import {startHotUpdates} from './hot-client.js';
 import './style.css';
@@ -13,5 +14,6 @@ try {
 
 }catch(e){logMessage(e);console.error(e);}
 try{await startHotUpdates(kernel);}catch(e){logMessage('Hot update restore failed: '+e.message);console.error(e);}
+try{await startFileSessions(kernel);}catch(e){logMessage('Session backup failed: '+e.message);}
 window.harnessHasUnsavedChanges=()=>kernel.services.has('workbench')&&kernel.get('workbench').tabs.some(t=>t.dirty);
 window.addEventListener('beforeunload',e=>{if(!window.harnessHotUpdating&&kernel.services.has('workbench')&&kernel.get('workbench').tabs.some(t=>t.dirty)){e.preventDefault();e.returnValue='';}});

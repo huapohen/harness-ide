@@ -46,7 +46,10 @@ await kernel.mount({id:'transport',activate(ctx){
  ctx.provide('transport',{upgrade(name,fn){upgrades.set(name,fn);return()=>upgrades.delete(name);}});
 }});
 for(const entry of config){if(entry.enabled===false)continue;await kernel.mount((await import(`./plugins/${entry.id}.mjs`)).default,{base,...entry.config});}
-server.listen(Number(process.env.PORT || 0),'127.0.0.1',()=>{origin=`http://127.0.0.1:${server.address().port}`;console.log(`${origin}/#${token}`);});
+// Resolve the compatible release before exposing the first page; never boot stale startup defaults.
+let startupVersion;try{startupVersion=(await hot.status()).current?.version;}catch(error){console.error('Hot startup fallback: '+error.message);}
+const startupPath=startupVersion&&startupVersion!=='legacy'?'/__hot/'+startupVersion+'/index.html':'/';
+server.listen(Number(process.env.PORT || 0),'127.0.0.1',()=>{origin=`http://127.0.0.1:${server.address().port}`;console.log(`${origin}${startupPath}#${token}`);});
 async function stop(){await kernel.dispose();server.close(()=>process.exit());setTimeout(()=>process.exit(),1000).unref();}
 process.on('SIGTERM',stop);process.on('SIGINT',stop);
 if(process.env.HARNESS_PARENT) setInterval(()=>{try{process.kill(Number(process.env.HARNESS_PARENT),0);}catch{stop();}},2000).unref();
