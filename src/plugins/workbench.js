@@ -58,13 +58,14 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
   if(docked===target)docked=null;active=added;render();added.focus?.();
  }
  async function prepare(t){
+  await api.flushFileOperations?.();
   if(t.kind==='terminal'){const result=await t.checkClose?.();if(result?.busy)return false;}
   if(t.dirty){const choice=await saveDecision(t.title);if(choice==='cancel')return false;if(choice==='save'){await t.save();if(t.dirty)return false;}}
   return true;
  }
  async function close(t=current()){
   if(!t||t.pinned||closing)return false;closing=true;
-  try{if(!await prepare(t))return false;if(t.kind==='terminal'){const result=await t.requestClose();if(result.busy)return false;return true;}remove(t);return true;}finally{closing=false;}
+  try{if(!await prepare(t)||t.pinned)return false;if(t.kind==='terminal'){const result=await t.requestClose();if(result.busy)return false;return true;}remove(t);return true;}finally{closing=false;}
  }
  async function closeAll(targets=tabs){
   if(closing)return false;closing=true;
@@ -85,7 +86,7 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
   const finish=async commit=>{if(finished)return;finished=true;const name=input.value.trim();try{if(commit&&name&&name!==t.title){if(t.rename)await t.rename(name);else t.title=name;}}catch(e){logMessage(e);}render();};
   input.onclick=e=>e.stopPropagation();input.ondblclick=e=>e.stopPropagation();input.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();finish(true);}if(e.key==='Escape'){e.preventDefault();finish(false);}};input.onblur=()=>finish(true);input.focus();input.select();
  }
- const api={snapshotLayout:()=>{const encode=n=>n.children?{direction:n.direction,ratio:n.ratio,children:n.children.map(encode)}:{id:n.id};return {active:active?.id,docked:docked?.id,groups:[...new Set(tabs.map(t=>t.group).filter(Boolean))].map(g=>encode(g.tree)),sidebarId,sidebarHidden:$('.sidebar').classList.contains('collapsed'),sidebarWidth:$('.sidebar').style.width,dockHeight:$('.dock').style.height,dockMaximized};},restoreLayout:async state=>{const decode=n=>n.children?{direction:n.direction,ratio:n.ratio,children:n.children.map(decode).filter(Boolean)}:tabs.find(t=>t.id===n.id);for(const tree of state.groups||[]){const group={tree:decode(tree),element:el('div','terminal-group')};for(const t of leaves(group.tree))t.group=group;drawGroup(group);}active=tabs.find(t=>t.id===state.active)||tabs[0]||null;docked=tabs.find(t=>t.id===state.docked)||null;dockMaximized=state.dockMaximized;$('.dock').style.height=state.dockHeight;$('.sidebar').style.width=state.sidebarWidth;await api.showPanel(state.sidebarId||'explorer');$('.sidebar').classList.toggle('collapsed',state.sidebarHidden);render();active?.focus?.();},rename,tabs,commands,root,$,render,remove,select,current,split,active:()=>active,close,closeAll,
+ const api={isClosing:()=>closing,snapshotLayout:()=>{const encode=n=>n.children?{direction:n.direction,ratio:n.ratio,children:n.children.map(encode)}:{id:n.id};return {active:active?.id,docked:docked?.id,groups:[...new Set(tabs.map(t=>t.group).filter(Boolean))].map(g=>encode(g.tree)),sidebarId,sidebarHidden:$('.sidebar').classList.contains('collapsed'),sidebarWidth:$('.sidebar').style.width,dockHeight:$('.dock').style.height,dockMaximized};},restoreLayout:async state=>{const decode=n=>n.children?{direction:n.direction,ratio:n.ratio,children:n.children.map(decode).filter(Boolean)}:tabs.find(t=>t.id===n.id);for(const tree of state.groups||[]){const group={tree:decode(tree),element:el('div','terminal-group')};for(const t of leaves(group.tree))t.group=group;drawGroup(group);}active=tabs.find(t=>t.id===state.active)||tabs[0]||null;docked=tabs.find(t=>t.id===state.docked)||null;dockMaximized=state.dockMaximized;$('.dock').style.height=state.dockHeight;$('.sidebar').style.width=state.sidebarWidth;await api.showPanel(state.sidebarId||'explorer');$('.sidebar').classList.toggle('collapsed',state.sidebarHidden);render();active?.focus?.();},rename,tabs,commands,root,$,render,remove,select,current,split,active:()=>active,close,closeAll,
   command(id,label,run){commands.set(id,{label,run});return()=>commands.delete(id);},
   run(id,...args){const c=commands.get(id);if(!c)throw new Error(`Plugin command unavailable: ${id}`);return c.run(...args);},
   open(tab){const existing=tabs.find(t=>t.id===tab.id);if(existing){select(existing);return existing;}const previous=replacementTab(tabs,tab);let index=tabs.length;if(previous){index=tabs.indexOf(previous);remove(previous);}tabs.splice(index,0,tab);$('.editor-area').append(tab.element);render();select(tab);return tab;},
@@ -146,6 +147,6 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
  sidebarDivider.onpointerup=e=>{if(sidebarDivider.hasPointerCapture(e.pointerId))sidebarDivider.releasePointerCapture(e.pointerId);};
  sidebarDivider.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();setSidebarWidth(sidebar.getBoundingClientRect().width+(e.key==='ArrowLeft'?-10:10));}};
  const divider=$('.divider');divider.onpointerdown=e=>divider.setPointerCapture(e.pointerId);divider.onpointermove=e=>{if(divider.hasPointerCapture(e.pointerId)){const r=$('.panes').getBoundingClientRect();$('.dock').style.height=Math.max(100,Math.min(r.height-100,r.bottom-e.clientY))+'px';for(const t of tabs)t.resize?.();}};
- window.harnessRequestQuit=async()=>{try{if(closing)return false;for(const t of tabs.filter(t=>t.kind==='terminal'))if(!await prepare(t))return false;if(!api.session)throw Error('Session backup is not ready');await api.session.flush();return true;}catch(e){logMessage(e);return false;}};ctx.effect(()=>delete window.harnessRequestQuit);
+ window.harnessRequestQuit=async()=>{if(closing)return false;window.harnessQuitting=true;try{await api.flushFileOperations?.();for(const t of tabs.filter(t=>t.kind==='terminal'))if(!await prepare(t)){window.harnessQuitting=false;return false;}if(!api.session)throw Error('Session backup is not ready');await api.session.flush();return true;}catch(e){window.harnessQuitting=false;logMessage(e);return false;}};ctx.effect(()=>delete window.harnessRequestQuit);
  ctx.effect(()=>{tabs.forEach(t=>t.dispose?.());root.replaceChildren();});
 }};

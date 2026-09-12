@@ -6,9 +6,10 @@ import {el,button,logMessage,menuAt} from '../ui.js';
 import {sourceEditor} from '../source-editor.js';
 export default {id:'documents',requires:['api','workbench'],async activate(ctx){
  const api=ctx.get('api'),wb=ctx.get('workbench'),viewers=new Map(),pending=new Map();let untitled=0,syncing=false;
- const enqueueSave=saveQueue(),automatic=autoSave({tabs:()=>wb.tabs,ready:()=>window.harnessHotReady&&!window.harnessHotUpdating,onError:(error,tab)=>logMessage('Auto Save · '+tab.title+': '+error.message)});
+ const enqueueSave=saveQueue(),automatic=autoSave({tabs:()=>wb.tabs,ready:()=>window.harnessHotReady&&!window.harnessHotUpdating&&!window.harnessQuitting&&!wb.isClosing()&&!document.querySelector('dialog[open],.tab-rename'),onError:(error,tab)=>logMessage('Auto Save · '+tab.title+': '+error.message)});
  let autoSaveEnabled=(await api('settings/layout/read')).autoSave===true,togglePending=Promise.resolve();
  const applyAutoSave=()=>{automatic.set(autoSaveEnabled);window.webkit?.messageHandlers.windowChrome?.postMessage({action:'autoSave',enabled:autoSaveEnabled});};
+ wb.flushFileOperations=async()=>{await togglePending.catch(()=>{});await enqueueSave.idle();};ctx.effect(()=>delete wb.flushFileOperations);
  applyAutoSave();ctx.on('tabs.changed',()=>automatic.schedule());ctx.effect(()=>automatic.dispose());
  ctx.effect(wb.command('files.autoSave','File · Auto Save',()=>{togglePending=togglePending.catch(()=>{}).then(async()=>{const value=!autoSaveEnabled;await api('settings/layout/write',{autoSave:value});autoSaveEnabled=value;applyAutoSave();});return togglePending;}));
  viewers.set('csv',csvPreview);
@@ -24,24 +25,25 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
   const bytes=Uint8Array.from(atob(result.data),c=>c.charCodeAt(0));let ext=fresh?'txt':path.split('.').at(-1).toLowerCase(),version=result.version;
   const element=el('section','document tab-content'),toolbar=el('div','document-toolbar'),content=el('div','document-content');element.append(content);
   const tab={id:identity,path:fresh?undefined:path,title:fresh?`Untitled-${++untitled}`:path.split('/').at(-1),kind:'file',temporary:temporary&&!fresh&&!duplicate,icon:ext==='md'?'M↓':ext==='pdf'?'P':'◇',element,external};
-  tab.rename=async name=>{
+  tab.rename=name=>enqueueSave(async()=>{
    if(!name.trim()||name==='.'||name==='..'||/[\/\x00]/.test(name))throw Error('Invalid file name');
    if(fresh){tab.title=name;return;}
    const oldPath=path,destination=path.slice(0,path.lastIndexOf('/')+1)+name;
    if(external)await api('external',{action:'rename',path,name});else await api('manage',{action:'rename',path,destination});
    for(const other of wb.tabs)if(other.path===oldPath&&!!other.external===!!external)other.acceptRename?.(destination,name);
    await wb.run('explorer.refresh');
-  };
+  });
   tab.acceptRename=(destination,name)=>{path=destination;tab.path=path;tab.title=name;if(!tab.id.startsWith('split:'))tab.id=(external?'external:':'file:')+path;};
   const imageTypes={png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',bmp:'image/bmp',svg:'image/svg+xml',ico:'image/x-icon'};
   if(imageTypes[ext]){
    const format=p=>({png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp'})[p.split('.').at(-1).toLowerCase()];
-   tab.saveAs=async()=>{const destination=await dialog('save',tab.title.replace(/\.[^.]+$/,'.png'));if(!destination)return false;const type=format(destination);if(!type)throw Error('请使用 .png、.jpg 或 .webp 后缀');if(wb.tabs.some(t=>t!==tab&&t.path===destination))throw Error('目标已在其他标签中打开');let v=null;try{v=(await api('external',{action:'read',path:destination})).version;}catch(e){if(!/ENOENT/.test(e.message))throw e;}const encoded=await tab.imageEditor.encode(type),r=await api('external',{action:'write',path:destination,data:encoded.data,version:v});path=destination;external=true;version=r.version;tab.path=path;tab.external=true;tab.id='external:'+path;tab.title=path.split('/').at(-1);tab.imageEditor.markSaved(encoded.snapshot);recent(path);return true;};
-   tab.save=()=>enqueueSave(async()=>{if(!tab.dirty)return true;const type=format(path);if(!type){logMessage('此格式请另存为 PNG、JPEG 或 WebP；不会覆盖原始文件');return tab.saveAs();}const encoded=await tab.imageEditor.encode(type),r=await api(external?'external':'write',{action:'write',path,data:encoded.data,version});version=r.version;tab.imageEditor.markSaved(encoded.snapshot);logMessage('已保存 '+tab.title);return true;});
+   const saveAs=async()=>{const destination=await dialog('save',tab.title.replace(/\.[^.]+$/,'.png'));if(!destination)return false;const type=format(destination);if(!type)throw Error('请使用 .png、.jpg 或 .webp 后缀');if(wb.tabs.some(t=>t!==tab&&t.path===destination))throw Error('目标已在其他标签中打开');let v=null;try{v=(await api('external',{action:'read',path:destination})).version;}catch(e){if(!/ENOENT/.test(e.message))throw e;}const encoded=await tab.imageEditor.encode(type),r=await api('external',{action:'write',path:destination,data:encoded.data,version:v});path=destination;external=true;version=r.version;tab.path=path;tab.external=true;tab.id='external:'+path;tab.title=path.split('/').at(-1);tab.imageEditor.markSaved(encoded.snapshot);recent(path);return true;};
+   tab.saveAs=()=>enqueueSave(saveAs);
+   tab.save=({canSave=()=>true}={})=>enqueueSave(async()=>{if(!canSave())return false;if(!tab.dirty)return true;const type=format(path);if(!type){logMessage('此格式请另存为 PNG、JPEG 或 WebP；不会覆盖原始文件');return saveAs();}const encoded=await tab.imageEditor.encode(type),r=await api(external?'external':'write',{action:'write',path,data:encoded.data,version});version=r.version;tab.imageEditor.markSaved(encoded.snapshot);logMessage('已保存 '+tab.title);return true;});
    tab.autoSaveEligible=()=>!!format(path);
    element.replaceChildren(await imageEditor({bytes,mime:imageTypes[ext],tab,wb,save:()=>tab.save(),saveAs:()=>tab.saveAs()}));tab.hotSnapshot=()=>({version,image:tab.imageEditor.snapshot()});tab.hotRestore=async state=>{version=state.version;await tab.imageEditor.restore(state.image);};wb.open(tab);return;
   }
-  if(ext==='pdf'){const viewer=viewers.get(ext);if(!viewer)throw Error('PDF plugin disabled');tab.saveAs=async()=>{const destination=await dialog('save',tab.title);if(!destination)return false;let targetVersion=null;try{targetVersion=(await api('external',{action:'read',path:destination})).version;}catch(e){if(!/ENOENT/.test(e.message))throw e;}await api('external',{action:'write',path:destination,data:result.data,version:targetVersion});recent(destination);return true;};tab.dispose=viewer(content,bytes);toolbar.append(el('span','','PDF · '+tab.title));wb.open(tab);if(external)recent(path);return;}
+  if(ext==='pdf'){const viewer=viewers.get(ext);if(!viewer)throw Error('PDF plugin disabled');const saveAs=async()=>{const destination=await dialog('save',tab.title);if(!destination)return false;let targetVersion=null;try{targetVersion=(await api('external',{action:'read',path:destination})).version;}catch(e){if(!/ENOENT/.test(e.message))throw e;}await api('external',{action:'write',path:destination,data:result.data,version:targetVersion});recent(destination);return true;};tab.saveAs=()=>enqueueSave(saveAs);tab.dispose=viewer(content,bytes);toolbar.append(el('span','','PDF · '+tab.title));wb.open(tab);if(external)recent(path);return;}
   if(['doc','docx','ppt','pptx','xls','xlsx','odt','odp','ods','rtf'].includes(ext)){
    const note=el('p','panel-note','正在生成文档预览…');content.append(note);wb.open(tab);
    try{const result=await api('office/preview',{data:resultData(bytes),ext});const pdf=Uint8Array.from(atob(result.data),c=>c.charCodeAt(0));const url=URL.createObjectURL(new Blob([pdf],{type:'application/pdf'}));const frame=el('iframe');frame.title=tab.title+' · 只读预览';frame.src=url;content.replaceChildren(frame);tab.dispose=()=>URL.revokeObjectURL(url);}catch(error){note.textContent='预览失败：'+error.message;}return;
@@ -59,9 +61,10 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
   tab.refreshPreview=()=>{if(mode==='preview')show();};
   source.oninput=()=>{tab.dirty=source.value!==saved;if(!syncing&&tab.path){syncing=true;try{for(const other of wb.tabs)if(other!==tab&&other.path===tab.path&&!!other.external===!!tab.external&&other.editor){other.editor.value=source.value;other.refreshPreview?.();}}finally{syncing=false;}}wb.render();};source.onkeydown=e=>{if(e.key==='Tab'){e.preventDefault();source.setRangeText('  ',source.selectionStart,source.selectionEnd,'end');source.dispatchEvent(new Event('input'));}};
   const encode=value=>btoa(Array.from(new TextEncoder().encode(value),x=>String.fromCharCode(x)).join(''));
-  tab.saveAs=async()=>{const destination=await dialog('save',tab.title);if(!destination)return false;const collision=wb.tabs.find(t=>t!==tab&&t.path===destination);if(collision){logMessage('目标文件已在另一个标签中打开，请先关闭该标签');return false;}let targetVersion=null;try{targetVersion=(await api('external',{action:'read',path:destination})).version;}catch(e){if(!/ENOENT/.test(e.message))throw e;}
+  const saveAs=async()=>{const destination=await dialog('save',tab.title);if(!destination)return false;const collision=wb.tabs.find(t=>t!==tab&&t.path===destination);if(collision){logMessage('目标文件已在另一个标签中打开，请先关闭该标签');return false;}let targetVersion=null;try{targetVersion=(await api('external',{action:'read',path:destination})).version;}catch(e){if(!/ENOENT/.test(e.message))throw e;}
    const value=source.value,r=await api('external',{action:'write',path:destination,data:encode(value),version:targetVersion});version=r.version;saved=value;tab.dirty=source.value!==saved;path=destination;external=true;fresh=false;tab.external=true;tab.path=path;tab.id='external:'+path;tab.title=path.split('/').at(-1);ext=path.split('.').at(-1).toLowerCase();editor.dispose();editor=sourceEditor(source,ext);mode='source';typeLabel.textContent=ext.toUpperCase()+' DOCUMENT';tab.togglePreview=ext==='md'?toggleMode:undefined;show();wb.render();recent(path);return true;};
-  tab.save=()=>enqueueSave(async()=>{if(fresh)return tab.saveAs();if(!tab.dirty)return true;const value=source.value,r=await api(external?'external':'write',{action:'write',path,data:encode(value),version});version=r.version;saved=value;tab.dirty=source.value!==saved;for(const other of wb.tabs)if(other!==tab&&other.path===tab.path&&!!other.external===!!tab.external)other.acceptSaved?.(version,saved);wb.render();logMessage('已保存 '+tab.title);return true;});
+  tab.saveAs=()=>enqueueSave(saveAs);
+   tab.save=({canSave=()=>true}={})=>enqueueSave(async()=>{if(!canSave())return false;if(fresh)return saveAs();if(!tab.dirty)return true;const value=source.value,r=await api(external?'external':'write',{action:'write',path,data:encode(value),version});version=r.version;saved=value;tab.dirty=source.value!==saved;for(const other of wb.tabs)if(other!==tab&&other.path===tab.path&&!!other.external===!!tab.external)other.acceptSaved?.(version,saved);wb.render();logMessage('已保存 '+tab.title);return true;});
   tab.autoSaveEligible=()=>!fresh;
   show();wb.open(tab);if(external)recent(path);
  }

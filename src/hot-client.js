@@ -16,7 +16,7 @@ export async function startHotUpdates(kernel){
   await wb.restoreLayout(snapshot.layout);setTimeout(()=>{for(const t of wb.tabs)t.hotRestoreScroll?.();},0);for(const t of wb.tabs)t.commitUpdate?.();sessionStorage.removeItem('harness-hot-snapshot');sessionStorage.removeItem('harness-hot-navigation');window.harnessHotUpdating=false;
  }
  await restore();window.harnessHotReady=true;
- async function snapshot(){if(document.querySelector('dialog[open],.tab-rename'))throw Error('Waiting for the current dialog or rename to finish');
+ async function snapshot(){await wb.flushFileOperations?.();if(document.querySelector('dialog[open],.tab-rename'))throw Error('Waiting for the current dialog or rename to finish');
   const tabs=[];
   for(const t of wb.tabs){if(t.kind!=='terminal'&&t.kind!=='settings'&&!t.path&&!t.hotSnapshot)throw Error('Waiting for unsupported preview to close');if(t.dirty&&!t.hotSnapshot)throw Error('Waiting for unsaved image or settings changes');tabs.push({id:t.id,title:t.title,kind:t.kind,path:t.path,external:t.external,pinned:t.pinned,temporary:t.temporary,state:t.hotSnapshot?.(),cols:t.terminal?.cols,rows:t.terminal?.rows,scrollTop:t.element.scrollTop});}
   const result={tabs,layout:wb.snapshotLayout(),unrestoredFiles:wb.unrestoredFiles||[]};
@@ -29,8 +29,8 @@ export async function startHotUpdates(kernel){
    if(next.js===active.js){const html=await fetch('/__hot/'+next.version+'/index.html').then(r=>r.text());const doc=new DOMParser().parseFromString(html,'text/html'),hrefs=[...doc.querySelectorAll('link[rel=stylesheet]')].map(l=>l.getAttribute('href'));const old=[...document.querySelectorAll('link[rel=stylesheet]')],added=[];
     try{await Promise.all(hrefs.map(href=>new Promise((resolve,reject)=>{const link=document.createElement('link');link.rel='stylesheet';link.href=href;link.onload=resolve;link.onerror=()=>reject(Error('Stylesheet update failed'));added.push(link);document.head.append(link);})));}catch(e){added.forEach(l=>l.remove());throw e;}old.forEach(l=>l.remove());active=next;report('Styles updated');return;
    }
-   for(const t of wb.tabs){if(t.kind==='terminal'&&!next.plugins.includes('terminal'))throw Error('Close terminals before disabling the terminal plugin');if(t.path&&!next.plugins.includes('documents'))throw Error('Close documents before disabling the document plugin');}await snapshot();sessionStorage.setItem('harness-hot-navigation',JSON.stringify({previous:location.pathname,next:next.version}));window.harnessHotUpdating=true;report('Updating plugins');location.replace('/__hot/'+next.version+'/index.html');
-  }catch(e){report('Deferred: '+e.message);}finally{busy=false;}
+   for(const t of wb.tabs){if(t.kind==='terminal'&&!next.plugins.includes('terminal'))throw Error('Close terminals before disabling the terminal plugin');if(t.path&&!next.plugins.includes('documents'))throw Error('Close documents before disabling the document plugin');}window.harnessHotUpdating=true;await snapshot();sessionStorage.setItem('harness-hot-navigation',JSON.stringify({previous:location.pathname,next:next.version}));report('Updating plugins');location.replace('/__hot/'+next.version+'/index.html');
+  }catch(e){window.harnessHotUpdating=false;report('Deferred: '+e.message);}finally{busy=false;}
  }
  async function check(){try{const result=await api('hot/status');if(result.pending)report('Runtime update pending; current session retained');else await apply(result.current);}catch(e){report('Update check failed: '+e.message);}}
  wb.command('hot.check','Plugins · Check for Hot Updates',check);kernel.services.set('hot-updates',{owner:'hot-client',value:{check,status:()=>statusText}});

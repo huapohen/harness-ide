@@ -57,3 +57,8 @@ test('manual flush does not disable future automatic session saves',async()=>{
  const wb={tabs:[],snapshotLayout:()=>({})};const kernel={events:new Map(),get:name=>name==='workbench'?wb:name==='workspace'?{info:()=>workspace}:async()=>({saved:true})};
  try{await startFileSessions(kernel);const schedule=[...kernel.events.get('tabs.changed')][0];schedule();assert.equal(callbacks.size,1);await wb.session.flush();assert.equal(callbacks.size,0);schedule();assert.equal(callbacks.size,1);}finally{Object.assign(globalThis,previous);}
 });
+test('incomplete startup or hot restore cannot overwrite the last good backup',async()=>{
+ const {startFileSessions}=await import('../src/file-session.js');const previous=globalThis.window;
+ globalThis.window={harnessSessionRestoreFailed:true};let accessed=false;
+ try{await assert.rejects(startFileSessions({get(){accessed=true;throw Error('must not access session storage');}}),/retaining the existing backup/);assert.equal(accessed,false);}finally{globalThis.window=previous;}
+});

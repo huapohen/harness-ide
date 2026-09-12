@@ -10,12 +10,14 @@ export function autoSave({tabs,ready=()=>true,onError=()=>{},delay=1000}) {
   try{for(const tab of [...tabs()]){
    if(!enabled||disposed||!ready())break;
    if(!tabs().includes(tab)||!tab.dirty||!tab.path||!tab.autoSaveEligible?.())continue;
-   try{await tab.save();}catch(error){onError(error,tab);}
+   try{await tab.save({canSave:()=>enabled&&!disposed&&ready()&&tabs().includes(tab)});}catch(error){onError(error,tab);}
   }}finally{running=false;}
  }
  return {schedule,set(value){enabled=value;cancel();if(value)schedule();},dispose(){disposed=true;cancel();}};
 }
 export function saveQueue(){
  let pending=Promise.resolve();
- return operation=>{const task=pending.catch(()=>{}).then(operation);pending=task;return task;};
+ const enqueue=operation=>{const task=pending.catch(()=>{}).then(operation);pending=task;return task;};
+ enqueue.idle=async()=>{let observed;do{observed=pending;await observed.catch(()=>{});}while(observed!==pending);};
+ return enqueue;
 }
