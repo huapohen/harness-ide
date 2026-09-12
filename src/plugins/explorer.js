@@ -44,7 +44,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
    const toggle=async()=>{if(expanded.has(p)){expanded.delete(p);children.replaceChildren();}else{expanded.add(p);try{await tree(children,p,depth+1);}catch(e){expanded.delete(p);throw e;}}drawArrow();};
    row.onmousedown=e=>{if(e.metaKey)e.preventDefault();};
    row.onclick=e=>{Promise.resolve().then(async()=>{markSelection(row,p,entry.directory,e.metaKey);if(e.altKey)await copyText(e.shiftKey?p:(await manage('absolute',p)).path);if(e.metaKey){row.focus();return;}if(entry.directory)await toggle();else{await wb.run('file.open')(p,{temporary:true});row.focus();}}).catch(logMessage);};
-   drawArrow();row.append(arrow);
+   drawArrow();if(entry.directory)row.append(arrow);
    if(!entry.directory){const icon=fileIcon(entry.name),glyph=el('span','tree-file-icon',icon.character);glyph.setAttribute('aria-hidden','true');glyph.style.setProperty('--file-icon-dark',icon.dark);glyph.style.setProperty('--file-icon-light',icon.light);row.append(glyph);}
    row.append(el('span','tree-label',entry.name));row.oncontextmenu=e=>{if(!multi.has(p))markSelection(row,p,entry.directory);context(e,p,entry.directory);};
    row.onkeydown=e=>{const run=fn=>{e.preventDefault();Promise.resolve().then(fn).catch(logMessage);};if(e.key==='F2')run(()=>rename(p));if(e.key==='Delete')run(()=>remove(p));
