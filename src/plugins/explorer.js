@@ -16,6 +16,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
  const manage=(action,path,extra={})=>api('manage',{action,path,...extra});
  const refresh=async()=>{await persistTree();return wb.showPanel('explorer');};
  async function newFile(name='',dir=selectedDirectory?selected:parent(selected),directory=false){const data=await form('',[{name:'name',label:'',ariaLabel:directory?'Folder name':'File name',value:name}],'创建',{compact:true,ariaLabel:directory?'New Folder':'New File'});if(!data)return;const p=join(dir,data.name);await manage('create',p,{directory});rootExpanded=true;let ancestor=dir;while(ancestor!=='.'){expanded.add(ancestor);ancestor=parent(ancestor);}await refresh();if(!directory)await wb.run('file.open')(p);}
+ async function addLink(dir){const root=info.root,host=info.host,target=await wb.run('file.chooseFolder');if(!target)return;const data=await form('Add Symbolic Link Here',[{name:'name',label:'Link name',value:target.split('/').filter(Boolean).at(-1)}],'Create');if(!data)return;if(root!==info.root||host!==info.host)throw Error('Workspace changed; please try again');await manage('symlink',dir,{target,name:data.name});expanded.add(dir);rootExpanded=true;await refresh();}
  async function closeAffected(p){for(const t of [...wb.tabs].filter(t=>t.path===p||t.path?.startsWith(p+'/')))if(!await wb.close(t))return false;return true;}
  async function rename(p){
  const row=[...wb.$('#sidebar-body').querySelectorAll('.file-row')].find(r=>r.dataset.path===p);if(!row||row.querySelector('input'))return;
@@ -33,7 +34,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
  async function terminal(dir){await wb.run('terminal.new');const t=wb.current();const absolute=(await manage('absolute',dir)).path;const command="cd -- '"+absolute.replaceAll("'","'\\''")+"'\r";let attempts=0;const timer=setInterval(()=>{if(t.sendData&&t.isReady){clearInterval(timer);t.sendData(command);}else if(++attempts>100){clearInterval(timer);logMessage('终端尚未就绪，请重试');}},100);}
  function context(e,p='.',directory=true){selected=p;selectedDirectory=directory;e.preventDefault();e.stopPropagation();const dir=directory?p:parent(p);const item=(label,run,disabled=false)=>({label,run,disabled});
  const rows=[];
- if(directory)rows.push(item('New File…',()=>newFile('',dir)),item('New Folder…',()=>newFile('',dir,true)),null);
+ if(directory)rows.push(item('New File…',()=>newFile('',dir)),item('New Folder…',()=>newFile('',dir,true)),item('Add Symbolic Link Here…',()=>addLink(dir),!!info.host),null);
  if(!directory)rows.push(item('Open to the Side',()=>openSide(p)),item('Open With…',()=>openWith(p)));
  if(!info.host)rows.push(item('Reveal in Finder',()=>manage('reveal',p)));
  rows.push(item('Open in Integrated Terminal',()=>terminal(dir)),null);

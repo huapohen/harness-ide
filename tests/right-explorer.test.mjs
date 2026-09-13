@@ -14,3 +14,13 @@ test('separate state stores retain selected row and scroll without changing left
  assert.deepEqual((await left.read(workspace)).expanded,['left']);const saved=await explorerState(tmp+'/right').read(workspace);assert.equal(saved.selected,'right/a');assert.equal(saved.scrollTop,210);assert.equal(saved.rootExpanded,false);
  }finally{await fs.rm(tmp,{recursive:true,force:true});}
 });
+test('symbolic links preserve target contents and never replace existing entries',async()=>{
+ const tmp=await fs.mkdtemp(path.join(os.tmpdir(),'harness-link-'));
+ try{const root=tmp+'/root',target=tmp+'/target';await fs.mkdir(root);await fs.mkdir(target);await fs.writeFile(target+'/keep','original');const primary=new Workspace(root);
+ await rightExplorer({root,action:'manage',operation:'symlink',path:'.',target,name:'alias'},primary);
+ assert.equal(await fs.readlink(root+'/alias'),target);assert.equal(await fs.readFile(root+'/alias/keep','utf8'),'original');
+ await assert.rejects(rightExplorer({root,action:'manage',operation:'symlink',path:'.',target,name:'alias'},primary),/EEXIST/);
+ await assert.rejects(rightExplorer({root,action:'manage',operation:'symlink',path:'.',target,name:'../escape'},primary),/Invalid/);
+ assert.equal(await fs.readFile(target+'/keep','utf8'),'original');
+ }finally{await fs.rm(tmp,{recursive:true,force:true});}
+});

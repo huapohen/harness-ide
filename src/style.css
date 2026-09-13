@@ -275,3 +275,7 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 .tab-actions>button:hover,.tab-actions>button:focus-visible{opacity:1}
 
 .corner-controls button:hover,.corner-controls button:focus-visible{color:var(--strong)}
+
+.activity{padding-top:3px;gap:2px}
+.view-hide-titlebar .activity{padding-top:10px}
+.activity-button{height:40px}

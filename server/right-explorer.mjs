@@ -15,7 +15,7 @@ export async function rightExplorer(q,primary){
  if(q.action==='info')return workspace.info();
  if(q.action==='list')return workspace.list(q.path||'.');
  if(q.action==='manage'){
-  if(!['create','rename','delete','copy','move','reveal','absolute','import'].includes(q.operation))throw Error('Unsupported file action');
+  if(!['symlink','create','rename','delete','copy','move','reveal','absolute','import'].includes(q.operation))throw Error('Unsupported file action');
   const history=new LocalHistory(workspace);
   if(['rename','move','delete'].includes(q.operation))await history.captureTree(q.path,q.operation==='delete'?'Before Delete':'Before Rename');
   return fileAction(workspace,{...q,action:q.operation});
