@@ -9,7 +9,7 @@ test('Git draft survives refresh and staging, and remains separate per repositor
  try{let render,repo='/workspace/one',staged=false,container;const branch={},calls=[];
  const wb={$:()=>branch,panel:(id,label,icon,fn)=>{render=fn;return()=>{};},command:()=>()=>{},showPanel:async()=>{if(container)container.isConnected=false;container=new Element('div');await render(container);}};
  const request=async(name,q)=>{calls.push(q);if(q.action==='repositories')return{repositories:[{path:'.',root:repo}]};if(q.action==='status')return{repository:true,root:repo,branch:'main',files:[{path:'a.txt',x:staged?'A':'?',y:staged?' ':'?'}]};if(q.action==='stage')staged=true;return{};};
- plugin.activate({get:n=>n==='api'?request:wb,effect(){},on(){}});await wb.showPanel();
+ plugin.activate({get:n=>n==='api'?request:n==='workspace'?{info:()=>({root:'/workspace',host:null})}:wb,effect(){},on(){}});await wb.showPanel();
  let input=find(container,n=>n['aria-label']==='Commit message');input.value='Preserve my draft';input.oninput();
  await wb.showPanel();assert.equal(find(container,n=>n['aria-label']==='Commit message').value,'Preserve my draft');
  find(container,n=>n['aria-label']==='Stage').onclick();await new Promise(r=>setImmediate(r));
