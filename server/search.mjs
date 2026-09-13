@@ -4,6 +4,7 @@ export function workspaceSearch(w,q){
  const key=typeof q.channel==='string'?q.channel.slice(0,100):null;
  if(key)active.get(key)?.();
  if(q.cancel)return Promise.resolve({matches:[],cancelled:true});
+ if(!String(q.search||''))return Promise.resolve({matches:[],truncated:false});
  return new Promise((resolve,reject)=>{
  const worker=new Worker(new URL('./search-worker.mjs',import.meta.url),{workerData:{root:w.root,host:w.host,query:q}});let pid,settled=false;
  const finish=async(error,result)=>{if(settled)return;settled=true;clearTimeout(timer);if(key&&active.get(key)===cancel)active.delete(key);if(pid)try{process.kill(pid);}catch{}await worker.terminate();worker.removeAllListeners();error?reject(error):resolve(result);};

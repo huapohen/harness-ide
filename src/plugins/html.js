@@ -4,16 +4,17 @@ export default {id:'html',requires:['documents','api'],activate(ctx){
  const receive=e=>{for(const [id,page] of pages){if(!page.container.isConnected){pages.delete(id);continue;}if(e.source===page.frame.contentWindow&&e.data?.harnessHTML===id&&typeof e.data.href==='string')page.navigate(e.data.href);}};
  window.addEventListener('message',receive);ctx.effect(()=>{window.removeEventListener('message',receive);pages.clear();});
  for(const ext of ['html','htm'])ctx.effect(ctx.get('documents').register(ext,(container,text,location={})=>{
+ container.disposePreview?.();
  for(const [key,page] of pages)if(!page.container.isConnected)pages.delete(key);
  const frame=document.createElement('iframe');frame.title='HTML 预览';
  // Inline page interactions run in an opaque origin without IDE credentials or network access.
  frame.setAttribute('sandbox','allow-scripts allow-downloads allow-modals');const bar=document.createElement('div');bar.className='html-navigation';const back=document.createElement('button');back.textContent='←';back.title='返回上一页';back.setAttribute('aria-label','返回上一页');back.disabled=true;const forward=document.createElement('button');forward.textContent='→';forward.title='前进下一页';forward.setAttribute('aria-label','前进下一页');forward.disabled=true;bar.append(back,forward);container.append(bar,frame);
- const id=crypto.randomUUID();let current=location.path||'index.html',revision=0;const history=[],future=[];let currentSource=text,currentHash='';const snapshot=()=>({source:currentSource,path:current,hash:currentHash});back.onclick=()=>{const previous=history.pop();if(previous){future.push(snapshot());revision++;show(previous.source,previous.path,previous.hash);}};
+ const id=crypto.randomUUID();let current=location.path||'index.html',revision=0,disposed=false;const history=[],future=[];let currentSource=text,currentHash='';const snapshot=()=>({source:currentSource,path:current,hash:currentHash});back.onclick=()=>{const previous=history.pop();if(previous){future.push(snapshot());revision++;show(previous.source,previous.path,previous.hash);}};
  forward.onclick=()=>{const next=future.pop();if(next){history.push(snapshot());revision++;show(next.source,next.path,next.hash);}};
  const read=async path=>{const result=await api(location.external?'external':'read',{action:'read',path});return new TextDecoder().decode(Uint8Array.from(atob(result.data),c=>c.charCodeAt(0)));};
  // A failed older request must not obscure a newer successful navigation.
- async function navigate(href){const request=++revision;try{if(/^https?:\/\//i.test(href)){await api('browser/open',{url:href});return;}const next=htmlPath(current,href);const value=await read(next.path);if(request===revision){history.push(snapshot());future.length=0;show(value,next.path,next.hash);}}catch(error){if(request!==revision||!container.isConnected)return;let note=container.querySelector('.html-error');if(!note){note=document.createElement('p');note.className='html-error panel-note';container.prepend(note);}note.textContent='页面打开失败：'+error.message;}}
- pages.set(id,{container,frame,navigate});
+ async function navigate(href){const request=++revision;try{if(/^https?:\/\//i.test(href)){await api('browser/open',{url:href});return;}const next=htmlPath(current,href);const value=await read(next.path);if(!disposed&&request===revision){history.push(snapshot());future.length=0;show(value,next.path,next.hash);}}catch(error){if(disposed||request!==revision||!container.isConnected)return;let note=container.querySelector('.html-error');if(!note){note=document.createElement('p');note.className='html-error panel-note';container.prepend(note);}note.textContent='页面打开失败：'+error.message;}}
+ pages.set(id,{container,frame,navigate});container.disposePreview=()=>{disposed=true;revision++;pages.delete(id);history.length=0;future.length=0;currentSource='';frame.srcdoc='';};
  function show(source,path,hash=''){
  current=path;currentSource=source;currentHash=hash;back.disabled=!history.length;forward.disabled=!future.length;container.querySelector('.html-error')?.remove();
  const nonce=crypto.randomUUID();

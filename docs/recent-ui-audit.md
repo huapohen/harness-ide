@@ -1,11 +1,11 @@
-# Recent UI regression review
+# Recent UI regression review (historical baseline)
 
 Reviewed the recent sidebar, settings, editor scrolling, tab handling, Git, HTML navigation, file/session persistence, and hot-update changes.
 
 ## Fixed
 
 - Each sidebar render now owns a fresh DOM target. A delayed Git response cannot replace another panel, or restore its old context menu and styles.
-- Git commit-message drafts survive refresh and staging during the current app run, with separate drafts for each repository. Successful commits clear the relevant draft; failed commits retain it. Completed actions no longer force the user back to Git after switching panels.
+- Git commit-message drafts survive refresh and staging during the current app run, with separate drafts for each repository. Current behavior: drafts are retained only while this panel is open; leaving or hiding Source Control clears them. Successful commits clear the relevant draft; failed commits retain it. Completed actions no longer force the user back to Git after switching panels.
 - Rapidly collapsing a directory while it is still loading discards that expansion's result. Reopening cannot append stale duplicate rows.
 - Inline rename rejects duplicate submission while its filesystem request is pending and clears an old validation error when editing the name.
 - Dragging a top-bar tab accounts for horizontal scrolling. An unrelated pointer release cannot complete an active drag.
@@ -19,3 +19,5 @@ Reviewed the recent sidebar, settings, editor scrolling, tab handling, Git, HTML
 - Existing automated coverage includes file/history/session storage, symlinks, settings, HTML path resolution, preview-tab protection, and update/terminal preservation.
 
 The audit does not establish that all bugs are absent. Physical trackpad pressure, every remote SSH environment, and every external HTML page were not exhaustively exercised. The app was not killed or restarted, so active terminal tasks were preserved.
+
+Latest full validation: [full-audit-2026-09-13.md](full-audit-2026-09-13.md). The counts above describe the original review.

@@ -1,33 +1,37 @@
-# Full repository check — 2026-09-13
+# 全量检查 — 2026-09-13（当前结果）
 
-## Results
+## 验证结果
 
-| Check | Result |
+| 检查 | 结果 |
 | --- | --- |
-| JavaScript / MJS syntax | 128 files passed |
-| Automated suite | 120 tests passed, 0 failures (baseline: 115) |
-| Production build | Passed; existing large-chunk warning remains |
-| Native host source | `xcrun swiftc -typecheck native/App.swift` passed |
-| Installed app verification | Relocated copy: signature, bundled Node, HTTP, real PTY, icon all passed |
-| Dependency advisories | `npm audit`: 0 known vulnerabilities at check time |
-| Live hot update | `6be8c59c005e6ee96f9b`; Plugins reported “Up to date” |
-| Formatting / whitespace | `git diff --check` passed |
+| 自动化测试 | 150 项通过，0 失败（本轮起点 144 项） |
+| JavaScript / MJS 语法 | 148 个文件通过 |
+| 生产构建与热发布 | 通过；仍有已有的 chunk 大小提示 |
+| Swift 源码类型检查 | `xcrun swiftc -typecheck native/App.swift` 通过 |
+| 已安装应用签名 | `codesign --verify --deep --strict` 通过 |
+| 依赖已知漏洞 | 本次 `npm audit` 报告 0 项 |
+| 工作区搜索 | `high` 返回 20,000 条；瘦身后从运行后端文件启动搜索约 1.5 秒 |
+| 原生界面 | Markdown / 源码往返、预览链接显示、PDF 上预览按钮禁用均正常；Plugins 检查显示 Up to date |
+| 发布与运行资源 | 当前发布 `042bfe51d79c8785791a`，运行进程磁盘租约确认该后端；前端仍使用 `cf350cbf958c3d43d884`，后端更新无需重新加载前端 |
+| 空白和格式 | `git diff --check` 通过 |
+| 本地目录体积 | 约 119 MB → 105 MB；热更新目录约 40 MB → 25 MB（磁盘占用，取整） |
 
-## Issues fixed
+## 本轮发现并修复
 
-1. **Concurrent save conflict protection.** Two writes using the same prior version could both pass validation and overwrite each other. Version validation and writing now share a per-file queue. Inode identity also covers symbolic and hard-link aliases. A reproduced two-success case now permits one success and rejects stale writes. This coordinates this app's requests; unrelated external programs do not participate in its queue.
-2. **History restore race.** Restoring an older revision now rechecks the current version immediately before writing, after its backup step. It preserves a new save that occurs during backup. External history reads use one byte snapshot for both content and version.
-3. **Repeated opens.** Concurrent opens of the same file share the in-progress load, avoiding duplicate editor initialization and leaked listeners. Explicit split and untitled-document creation remain independent; failed loads can be retried.
-4. **Closed Office previews.** A conversion completing after its tab is closed no longer creates a retained object URL for a detached preview.
-5. **Preview plugin protection.** Uppercase and mixed-case file extensions now receive the same protection against disabling an in-use HTML, Markdown or PDF plugin.
-6. **Rename versus update.** Hot update waits for the Explorer's inline rename input, just as it waits for dialogs. Native UI verification kept the old frontend and input intact during publication, then completed the update after Escape cancellation.
-7. **HTML navigation errors.** A failed older navigation request can no longer place an error over a newer successful page or append an error after the preview is detached.
-8. **Markdown Save As.** The `.markdown` suffix retains the preview shortcut when used as a Save As destination.
+1. Markdown 切回源码或关闭标签后，及时释放图片对象 URL 和预览 DOM；切换时隐藏浮窗，保留已捕获的阅读位置。
+2. HTML 预览销毁时释放页面桥接、导航历史和 iframe 内容，迟到的读取结果不能重新填回旧预览。
+3. 快速悬停多个图片链接时，旧图片请求失败不会关闭后来显示的新图片。新增资源释放、迟到结果回归测试。
+4. Markdown 表格中重复出现相同链接时，为每个单元格保留独立源码位置。链接解析按文档对象版本缓存，鼠标移动不再反复序列化全文。
+5. 空搜索直接返回，不再无意义地启动工作线程。
+6. 后端版本引用增加进程拥有的磁盘租约，独立清理进程也能识别活动搜索 worker 的依赖。以独立 Node 进程验证：租约存在时保留，释放后才能删除。
+7. 保留版本中的大型、内容相同的语法资源和后端依赖使用硬链接共享磁盘内容；所有原路径继续有效。测试验证不同内容不合并，删除某个版本后另一个版本仍完整可读。
 
-## Coverage and limits
+## 清理与文档
 
-Reviewed the frontend document/editor/tab flows, settings and plugin lifecycle, local file/version/history/session storage, search and HTML navigation, update paths and app packaging. The existing automated suite additionally covers terminal input/fit/mouse behavior, symlinks, clipboard/import paths, retention, sticky scopes and preview protection.
+清理保留当前发行、活动前端、磁盘租约指向的后端及插件引用。当前前后端使用不同版本，因此保留两套路径，通过共享不可变资源消除重复占用。未删除用户配置、文件历史、会话记录或已安装应用，也未终止用户终端任务；没有新增安装备份。
 
-The app-package test ran an isolated copy with a temporary home directory and a separate test PTY. The user's running app and terminal processes were not restarted or terminated. Concurrent-save and history-restore reproduction used temporary files that were removed afterward. The live rename check was cancelled without renaming the file; temporary Plugins button visibility was restored.
+README 修正了 Git 面板能力、预览按钮、缓存回退保留等旧说法，补充资源释放和磁盘租约说明。早期专项报告保留历史性质并链接到本报告；本报告的测试数量取代早期 115/120/128/144 项等基线数字。
 
-This is a broad regression check, not a proof that every possible bug is absent. Real remote SSH servers, physical trackpad pressure, every Office format/converter combination, disk-full/power-loss behavior and arbitrary third-party HTML were not exhaustively exercised. The installed native base was verified separately from the latest hot-loaded frontend/backend.
+## 验证边界
+
+这是一轮广泛回归检查，不能证明不存在所有 bug。真实远程 SSH、外部网络 Pull/Push、全部 Office 格式以及断电/磁盘耗尽情形未穷举；未对用户仓库执行测试性提交、推拉或删除。Git/SSH 的本轮自动测试使用临时仓库及适配器测试环境。构建的大 chunk 提示仍在，但本轮没有引入依赖或重构加载架构来掩盖该提示。

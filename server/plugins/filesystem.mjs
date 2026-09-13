@@ -1,3 +1,4 @@
+import {holdBackendRelease} from '../release-leases.mjs';
 import {markdownLink} from '../markdown-link.mjs';
 import {rightExplorer} from '../right-explorer.mjs';
 import {exec} from '../workspace.mjs';
@@ -9,6 +10,7 @@ import {workspaceSearch} from '../search.mjs';
 import {externalFile} from '../external-files.mjs';
 import {fileAction} from '../file-actions.mjs';
 export default {id:'filesystem',requires:['routes','workspace'],activate(ctx){
+ ctx.effect(holdBackendRelease(import.meta.url));
  const leases=globalThis[Symbol.for('harness.backendReleaseLeases')] ||= new Map();
  const release=import.meta.url.match(/hot-updates\/([a-f0-9]{20})\//)?.[1];
  if(release){leases.set(release,(leases.get(release)||0)+1);ctx.effect(()=>{const n=leases.get(release)-1;if(n)leases.set(release,n);else leases.delete(release);});}
