@@ -4,3 +4,9 @@ test('top tabs retain free positions and separate collisions even when overflowi
  const items=topTabLayout([{x:300,width:100},{x:320,width:120},{x:350,width:100}],400);
  for(let i=1;i<items.length;i++)assert.ok(items[i].left>=items[i-1].left+items[i-1].width+4);
 });
+test('left right and centered groups preserve spacing',()=>{
+ const items=[{x:250,width:100},{x:400,width:100}];
+ assert.deepEqual(topTabLayout(items,600,4,'left').map(x=>x.left),[0,104]);
+ assert.deepEqual(topTabLayout(items,600,4,'right').map(x=>x.left),[396,500]);
+ assert.deepEqual(topTabLayout(items,600,4,'center').map(x=>x.left),[198,302]);
+});
