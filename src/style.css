@@ -197,3 +197,6 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 .image-color-swatch{width:16px;height:16px;min-width:16px;padding:0;border:1px solid var(--border);border-radius:2px}.image-text-box textarea{white-space:pre;overflow:auto}
 
 .tab{font-size:var(--sidebar-font-size,13px)}
+/* Match the dark editor's gray background on the activity bar. */
+:root:not([data-theme=light]) .activity{background:var(--bg)}
+:root:not([data-theme=light]) .activity-button.codicon{--activity-glyph-bg:var(--bg)}
