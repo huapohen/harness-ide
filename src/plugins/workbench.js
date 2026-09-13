@@ -25,6 +25,7 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
  const persistOrder=()=>{const order=[...activityOrder];saveOrder=saveOrder.catch(()=>{}).then(()=>layoutAPI('settings/layout/write',{activityOrder:order})).catch(e=>logMessage('Unable to save sidebar order: '+e.message));};
  const current=()=>tabs.find(t=>t.element.contains(document.activeElement))||active;
  function render(preserveTabs=false){
+  const previewControl=$('.preview-toggle');if(previewControl){previewControl.disabled=!active?.canPreview?.()||! /\.(md|markdown|html|htm)$/i.test(active?.path||'');previewControl.setAttribute('aria-pressed',String(active?.getMode?.()==='preview'));}
   if(!preserveTabs){
   $('.tabs').replaceChildren();$('.top-tabs').replaceChildren();
   for(const t of tabs){
@@ -126,7 +127,8 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
  ctx.provide('workbench',api);
  const newButton=button('+','新建终端或文件',()=>{});newButton.setAttribute('aria-haspopup','menu');
  newButton.onclick=e=>{e.stopPropagation();const native=window.webkit?.messageHandlers.windowChrome;if(native){native.postMessage({action:'newMenu'});return;}const r=newButton.getBoundingClientRect();menuAt(r.left,r.bottom,[{label:'terminal',run:()=>api.run('terminal.new')},...['file.txt','file.md','file'].map(name=>({label:name==='file.txt'?'txt':name==='file.md'?'md':name,run:()=>api.run('explorer.newFile',name)}))]);};
- $('.tab-actions').append(newButton,button('◫','左右切分当前终端',()=>api.run('terminal.splitVertical')),button('⬒','上下切分当前终端',()=>api.run('terminal.splitHorizontal')));
+ const previewButton=button('','切换预览 / 源码（Markdown、HTML）',()=>{const t=active;if(t?.canPreview?.()&&/\.(md|markdown|html|htm)$/i.test(t.path||'')){t.showMode(t.getMode()==='preview'?'source':'preview');render(true);}},'preview-toggle');previewButton.innerHTML='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
+ $('.tab-actions').append(previewButton,newButton,button('◫','左右切分当前终端',()=>api.run('terminal.splitVertical')),button('⬒','上下切分当前终端',()=>api.run('terminal.splitHorizontal')));
  $('.activity').oncontextmenu=e=>{e.preventDefault();menuAt(e.clientX,e.clientY,[...panels].sort(([a],[b])=>a==='settings'?1:b==='settings'?-1:activityOrder.indexOf(a)-activityOrder.indexOf(b)).map(([id,p])=>({label:p.label,checked:!hiddenPanels.has(id),run:()=>{if(hiddenPanels.has(id))hiddenPanels.delete(id);else hiddenPanels.add(id);p.b.hidden=hiddenPanels.has(id);localStorage.setItem('hidden-panels',JSON.stringify([...hiddenPanels]));}})));};
  installWindowDrag(root,action=>window.webkit?.messageHandlers.windowChrome?.postMessage({action}));
  $('#theme-button').onclick=()=>api.run('theme.toggle');$('#workspace-title').onclick=()=>api.run('workspace.open').catch(logMessage);
