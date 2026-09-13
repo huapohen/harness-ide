@@ -10,7 +10,7 @@ export function captureSession(wb,workspace) {
   const view=t.sessionView?.()||(state?{mode:state.mode,scrollTop:state.scrollTop,scrollLeft:state.scrollLeft,previewScroll:state.previewScroll,selection:state.editor?.selection}:undefined);
   let backup;
   if(t.dirty||!t.path){if(!state)throw Error('Cannot back up '+t.title);backup=state;if(state.editor){const {history,...editor}=state.editor;backup={...state,editor};}}
-  return {id:t.id,path:t.path,title:t.title,external:!!t.external,pinned:!!t.pinned,temporary:!!t.temporary,view,backup};
+  return {id:t.id,path:t.path,title:t.title,external:!!t.external,pinned:!!t.pinned,temporary:!!t.temporary,previewGroup:t.previewGroup,view,backup};
  });
  for(const saved of wb.unrestoredFiles||[])if(!tabs.some(t=>t.id===saved.id))tabs.push(saved);
  return {schema:1,workspace:{root:workspace.root,host:workspace.host||null},tabs,layout:fileLayout(wb.snapshotLayout(),tabs)};

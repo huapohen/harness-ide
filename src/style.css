@@ -250,3 +250,13 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 .file-row{cursor:pointer;user-select:none;-webkit-user-select:none}
 .file-row .explorer-rename{cursor:text;user-select:text;-webkit-user-select:text}
 
+.secondary-heading:has(+.right-explorer){height:26px;min-height:26px;padding:0 8px;justify-content:space-between}
+.right-explorer{overflow-y:scroll;overflow-x:hidden;overflow-anchor:none;background:var(--sidebar);color-scheme:dark;scrollbar-color:auto;font-size:var(--sidebar-font-size,13px)}
+[data-theme="light"] .right-explorer{color-scheme:light}
+.right-explorer::-webkit-scrollbar,.right-explorer::-webkit-scrollbar-track{background:var(--sidebar)}
+.right-explorer::-webkit-scrollbar-thumb{background:transparent}
+.right-explorer.scrollbar-near::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb)}
+.right-explorer .file-row,.right-explorer .tree-root{height:22px;min-height:22px;padding-top:0;padding-bottom:0;color:var(--treeColor,#abb2bf);font-size:inherit}
+.right-explorer .tree-root{position:sticky;top:0;z-index:30;background:var(--sidebar)}
+.right-explorer .tree-label{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.right-explorer .tree-root>.tree-label{font-weight:600}

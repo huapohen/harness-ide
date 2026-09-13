@@ -1,3 +1,4 @@
+import {rightExplorer} from '../right-explorer.js';
 import {selectRange} from '../../shared/range-selection.js';
 import {fileIcon} from '../file-icons.js';
 import {el,button,form,logMessage,menuAt} from '../ui.js';
@@ -83,4 +84,5 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
  ctx.effect(wb.command('explorer.newFolder','Explorer · 新建文件夹',()=>newFile('',selectedDirectory?selected:parent(selected),true)));
  ctx.effect(wb.command('explorer.collapseAll','Explorer · 全部折叠',collapse));
  update();await refresh();
+ rightExplorer(ctx).catch(logMessage);
 }};

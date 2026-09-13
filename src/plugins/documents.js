@@ -20,14 +20,14 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
  window.harnessFileDialogResult=(id,path)=>{pending.get(id)?.(path||null);pending.delete(id);};
  const recent=(path,directory=false)=>window.webkit?.messageHandlers.nativeFiles?.postMessage({action:'recent',path,directory});
  function open(path,options={}){return options.fresh||options.duplicate?openFile(path,options):opening(JSON.stringify([!!options.external,path]),()=>openFile(path,options));}
- async function openFile(path,{external=false,fresh=false,duplicate=false,temporary=false}={}){
+ async function openFile(path,{external=false,fresh=false,duplicate=false,temporary=false,previewGroup='primary'}={}){
   const identity=duplicate?'split:'+crypto.randomUUID():fresh?'untitled:'+crypto.randomUUID():(external?'external:':'file:')+path;
   const existing=wb.tabs.find(t=>t.id===identity);if(existing){wb.open(existing);return;}
   const result=fresh?{data:'',version:null}:await api(external?'external':'read',{action:'read',path});
   if(!fresh&&!external){const info=await api('info');if(!info.host)recent(info.root+'/'+path);}
   const bytes=Uint8Array.from(atob(result.data),c=>c.charCodeAt(0));let ext=fresh?'txt':path.split('.').at(-1).toLowerCase(),version=result.version;
   const element=el('section','document tab-content'),toolbar=el('div','document-toolbar'),content=el('div','document-content');element.append(content);
-  const tab={id:identity,path:fresh?undefined:path,title:fresh?`Untitled-${++untitled}`:path.split('/').at(-1),kind:'file',temporary:temporary&&!fresh&&!duplicate,icon:ext==='md'?'M↓':ext==='pdf'?'P':'◇',element,external};
+  const tab={id:identity,path:fresh?undefined:path,title:fresh?`Untitled-${++untitled}`:path.split('/').at(-1),kind:'file',previewGroup,temporary:temporary&&!fresh&&!duplicate,icon:ext==='md'?'M↓':ext==='pdf'?'P':'◇',element,external};
   tab.rename=name=>enqueueSave(async()=>{
    if(!name.trim()||name==='.'||name==='..'||/[\/\x00]/.test(name))throw Error('Invalid file name');
    if(fresh){tab.title=name;return;}
@@ -79,6 +79,7 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
   'file.newText':['文件 · 新建文本文件',()=>open('',{fresh:true})],
   'file.new':['文件 · 新建文件…',()=>{const r=wb.$('.titlebar').getBoundingClientRect();menuAt(100,r.bottom,[...['file.txt','file.md','file'].map(n=>({label:n==='file.txt'?'txt':n==='file.md'?'md':n,run:()=>wb.run('explorer.newFile',n)}))]);}],
   'file.openDialog':['文件 · 打开…',async()=>{const path=await dialog('open');if(path)await open(path,{external:true});}],
+  'file.chooseFolder':['文件 · 选择文件夹',()=>dialog('folder')],
   'file.openFolderDialog':['文件 · 打开文件夹…',async()=>{const path=await dialog('folder');if(path)await window.harnessOpenPath(path,true);}],
   'files.saveAs':['文件 · 另存为…',()=>{const t=wb.current();return t?.kind==='file'?t.saveAs?.():undefined;}],
   'markdown.togglePreview':['Markdown · 切换预览 / 编辑',()=>wb.active()?.togglePreview?.()],

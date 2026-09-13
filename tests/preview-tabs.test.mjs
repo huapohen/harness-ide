@@ -13,3 +13,7 @@ test('retained, pinned, dirty, split and terminal tabs survive browsing',()=>{
 test('explicit opens never replace a temporary slot',()=>{
  assert.equal(replacementTab([preview],{kind:'file'}),null);
 });
+test('independent Explorer preview slots never replace each other',()=>{
+ const primary={kind:'file',temporary:true},right={kind:'file',temporary:true,previewGroup:'right'};
+ assert.equal(replacementTab([primary,right],{...right}),right);assert.equal(replacementTab([primary,right],{kind:'file',temporary:true}),primary);assert.equal(replacementTab([primary],{...right}),null);
+});
