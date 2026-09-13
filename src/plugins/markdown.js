@@ -1,6 +1,6 @@
 import {previewScrollbar} from '../preview-scrollbar.js';
 import {highlightCodeBlocks} from '../source-editor.js';
-import {marked} from 'marked';
+import {markdownBlocks} from '../markdown-progress.js';
 import DOMPurify from 'dompurify';
 export default {id:'markdown',requires:['documents','api'],activate(ctx){const render=(container,text,context)=>{
  container.disposePreviewImages?.();let disposed=false;const urls=[];container.disposePreviewImages=()=>{disposed=true;urls.forEach(URL.revokeObjectURL);};
@@ -8,7 +8,7 @@ export default {id:'markdown',requires:['documents','api'],activate(ctx){const r
  const wasOpen=container.dataset.tocOpen==='true';
  container.classList.remove('markdown');container.classList.add('markdown-preview');container.replaceChildren();
  const scroll=document.createElement('div');scroll.className='markdown-scroll';container.disposePreviewScrollbar=previewScrollbar(scroll);
- const article=document.createElement('article');article.className='markdown';article.innerHTML=DOMPurify.sanitize(marked.parse(text));
+ const article=document.createElement('article');article.className='markdown';for(const block of markdownBlocks(text)){const part=document.createElement('div');part.innerHTML=DOMPurify.sanitize(block.html);part.querySelectorAll('[data-md-source-line]').forEach(node=>node.removeAttribute('data-md-source-line'));if(part.firstElementChild)part.firstElementChild.dataset.mdSourceLine=block.line;article.append(...part.childNodes);}
  highlightCodeBlocks(article).catch(console.error);
  article.querySelectorAll('img').forEach(img=>{const href=img.getAttribute('src');img.dataset.linkHref=href;if(/^https?:/i.test(href))return;img.removeAttribute('src');ctx.get('api')('markdown/link',{...context,href,image:true}).then(r=>{if(disposed||!r.data)return;const url=URL.createObjectURL(new Blob([Uint8Array.from(atob(r.data),c=>c.charCodeAt(0))],{type:r.mime}));urls.push(url);img.src=url;}).catch(()=>{img.alt=img.alt||'图片不可用';});});
  scroll.append(article);
