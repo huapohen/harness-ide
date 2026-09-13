@@ -37,6 +37,7 @@ export const defaults = [
  ['ctrl+d','terminal.eof','terminalFocus'],
  ['cmd+f','editor.find','fileTabActive && !dialogFocus'], ['cmd+shift+f','search.workspace'], ['alt+enter','editor.selectAllMatches','editorTextFocus || findInputFocus'], ['cmd+shift+l','editor.selectAllMatches','editorTextFocus'], ['cmd+alt+f','editor.replace','fileTabActive && !dialogFocus'],
  ['cmd+l','editor.selectLine','editorTextFocus'], ['cmd+/','editor.toggleComment','editorTextFocus'],
+ ['cmd+up','editor.moveLineUp','editorTextFocus'], ['cmd+down','editor.moveLineDown','editorTextFocus'],
  ['alt+up','editor.moveLineUp','editorTextFocus'], ['alt+down','editor.moveLineDown','editorTextFocus'],
  ['shift+alt+down','editor.duplicateLine','editorTextFocus'],
  ['cmd+enter','editor.insertLineBelow','editorTextFocus'], ['cmd+shift+enter','editor.insertLineAbove','editorTextFocus'],

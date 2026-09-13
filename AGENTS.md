@@ -7,3 +7,5 @@ A new host process is required only for changes classified as runtime by `script
 Build and verify the standalone app for initial installation and runtime upgrades. Preserve the installed app backup before replacement. Do not claim a bundle replacement changed the running window.
 
 After every requested change, verify the live hot update, remove obsolete installation/build artifacts and safe-to-delete release caches from `~/.hot_plugging`, then commit and push to the personal Git remote. Preserve user settings, history, session backups, installed base resources, and any release still referenced by the running frontend, backend, or plugin packages. Do not stop active terminal jobs to reclaim a cache.
+
+Before each commit and push, update README.md and any outdated documentation or configuration examples to match the shipped behavior.

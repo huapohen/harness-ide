@@ -348,5 +348,15 @@
     "key": "cmd+shift+2",
     "command": "markdown.togglePreview",
     "when": "!dialogFocus"
+  },
+  {
+    "key": "cmd+up",
+    "command": "editor.moveLineUp",
+    "when": "editorTextFocus"
+  },
+  {
+    "key": "cmd+down",
+    "command": "editor.moveLineDown",
+    "when": "editorTextFocus"
   }
 ]
