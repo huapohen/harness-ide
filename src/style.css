@@ -200,4 +200,7 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 /* Match the dark editor's gray background on the activity bar. */
 :root:not([data-theme=light]) .activity{background:var(--bg)}
 :root:not([data-theme=light]) .activity-button.codicon{--activity-glyph-bg:var(--bg)}
-.tree-link-badge{margin-left:auto;padding-left:8px;flex-shrink:0;align-self:center;color:var(--muted);opacity:.75;font-size:11px;font-weight:400;line-height:1}
+.tree-link-badge{margin-left:auto;padding-left:8px;flex-shrink:0;align-self:center;color:var(--muted);opacity:.7;font-size:9px;font-weight:400;line-height:1}
+
+/* Reserve the scrollbar lane before expansion; do not anchor scrolling to newly revealed children. */
+#sidebar-body{overflow-y:scroll;overflow-anchor:none}
