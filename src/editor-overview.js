@@ -26,7 +26,7 @@ export const editorOverview=ViewPlugin.fromClass(class {
   on(this.dom,'pointermove',e=>{if(this.drag)this.move(e);});
   on(this.dom,'pointerup',e=>{this.drag=null;this.dom.classList.remove('dragging');if(this.dom.hasPointerCapture(e.pointerId))this.dom.releasePointerCapture(e.pointerId);if(!this.dom.matches(':hover'))this.dom.classList.remove('visible');});
   on(this.dom,'pointercancel',()=>{this.drag=null;this.dom.classList.remove('visible','dragging');});
-  this.resize=new ResizeObserver(()=>{this.dirty=true;this.schedule();});this.resize.observe(view.dom);this.resize.observe(view.scrollDOM);
+  this.resize=new ResizeObserver(()=>{this.dirty=true;this.schedule();});this.resize.observe(this.dom);this.resize.observe(view.dom);this.resize.observe(view.scrollDOM);
   this.schedule();
  }
  update(u){if(u.docChanged||getSearchQuery(u.startState)!==getSearchQuery(u.state)||searchPanelOpen(u.startState)!==searchPanelOpen(u.state))this.dirty=true;this.schedule();}
