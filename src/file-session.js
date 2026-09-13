@@ -4,7 +4,7 @@ export async function restoreFiles(wb,session){
  wb.unrestoredFiles=[];
  for(const saved of session.tabs){
   try{
-   if(saved.path){try{await wb.run('file.open')(saved.path,{external:saved.external,duplicate:true});}catch(error){if(!saved.backup)throw error;await wb.run('file.newText');}}
+   if(saved.path){try{await wb.run('file.open')(saved.path,{external:saved.external,duplicate:true,previewGroup:saved.previewGroup});}catch(error){if(!saved.backup)throw error;await wb.run('file.newText');}}
    else await wb.run('file.newText');
    const tab=wb.active();tab.id=saved.id;tab.title=saved.title;tab.pinned=saved.pinned;tab.temporary=saved.temporary;tab.previewGroup=saved.previewGroup;
    if(saved.backup)await tab.hotRestore?.(saved.backup);

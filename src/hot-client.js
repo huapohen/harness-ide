@@ -10,7 +10,7 @@ export async function startHotUpdates(kernel){
    if(saved.kind==='terminal'){tab=await wb.run('terminal.restore',saved);await new Promise((resolve,reject)=>{const start=Date.now();const tick=()=>{if(tab.isReady)return resolve();if(tab.connectionError||Date.now()-start>10000)return reject(Error('Terminal reconnect failed'));setTimeout(tick,50);};tick();});}
    else if(saved.id==='settings:keybindings-json'){await wb.run('settings.keybindingsJSON');tab=wb.active();if(saved.state)await tab.hotRestore(saved.state);}
    else if(saved.kind==='settings'){await wb.run('settings.keybindings');tab=wb.active();}
-   else{if(saved.path)await wb.run('file.open')(saved.path,{external:saved.external,duplicate:true});else await wb.run('file.newText');tab=wb.active();if(saved.state)await tab.hotRestore(saved.state);}
+   else{if(saved.path)await wb.run('file.open')(saved.path,{external:saved.external,duplicate:true,previewGroup:saved.previewGroup});else await wb.run('file.newText');tab=wb.active();if(saved.state)await tab.hotRestore(saved.state);}
    remap.set(saved.id,tab.id);tab.id=saved.id;tab.title=saved.title;tab.pinned=saved.pinned;tab.temporary=saved.temporary;tab.previewGroup=saved.previewGroup;tab.element.scrollTop=saved.scrollTop||0;
   }
   await wb.restoreLayout(snapshot.layout);setTimeout(()=>{for(const t of wb.tabs)t.hotRestoreScroll?.();},0);for(const t of wb.tabs)t.commitUpdate?.();sessionStorage.removeItem('harness-hot-snapshot');sessionStorage.removeItem('harness-hot-navigation');window.harnessHotUpdating=false;

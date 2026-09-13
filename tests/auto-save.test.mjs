@@ -41,3 +41,8 @@ test('pause while a save dialog is open, then save when editing resumes',async()
  let dialog=true,count=0;const tab={path:'a',dirty:true,autoSaveEligible:()=>true,save:async()=>{count++;tab.dirty=false;}};
  const a=autoSave({tabs:()=>[tab],ready:()=>!dialog,delay:5});a.set(true);await pause();assert.equal(count,0);dialog=false;await pause();assert.equal(count,1);a.dispose();
 });
+test('right and primary auto-save switches save only their own documents',async()=>{
+ const saved=[];const tabs=['primary','right'].map(previewGroup=>({previewGroup,path:previewGroup,dirty:true,autoSaveEligible:()=>true,save:async()=>saved.push(previewGroup)}));
+ const left=autoSave({tabs:()=>tabs.filter(t=>t.previewGroup!=='right'),delay:5}),right=autoSave({tabs:()=>tabs.filter(t=>t.previewGroup==='right'),delay:5});
+ try{right.set(true);await pause();assert.deepEqual(saved,['right']);right.set(false);left.set(true);await pause();assert.deepEqual(saved,['right','primary']);}finally{left.dispose();right.dispose();}
+});
