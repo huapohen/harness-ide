@@ -241,3 +241,12 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 .settings-label{color:var(--muted);line-height:16px}
 .settings-field>input,.settings-field>select{box-sizing:border-box;width:100%;min-width:0;height:30px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--fg);font:inherit;font-size:12px}
 .settings-group-body>button{text-align:left;padding:7px 0;font-size:12px}
+
+/* WebKit: use the custom track instead of native light scrollbars for transparent colors. */
+#sidebar-body,#sidebar-body.scrollbar-near{scrollbar-color:auto;color-scheme:dark}
+[data-theme="light"] #sidebar-body{color-scheme:light}
+#sidebar-body::-webkit-scrollbar-track{background:var(--sidebar)}
+#sidebar-body::-webkit-scrollbar{background:var(--sidebar)}
+.file-row{cursor:pointer;user-select:none;-webkit-user-select:none}
+.file-row .explorer-rename{cursor:text;user-select:text;-webkit-user-select:text}
+
