@@ -187,3 +187,13 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 .file-row>.tree-file-icon,.file-row>.tree-chevron{width:16px;min-width:16px;flex:0 0 16px;text-align:center}
 
 .sidebar[data-panel="explorer"]>.sidebar-heading{display:none}
+/* Compact editor chrome and quiet Explorer. */
+.tabbar{min-height:30px;height:30px;flex-shrink:0}.tab{min-height:26px;margin:2px;border-top:0;padding:0 9px}.tabs{scrollbar-width:none}.tabs::-webkit-scrollbar{height:0}
+.cm-shell>.cm-editor{line-height:1.5}.cm-editor .cm-content{padding:4px 0}
+.sidebar-divider:hover,.sidebar-divider:active{background:transparent}.tree-children:before{display:none!important}
+#sidebar-body{scrollbar-color:transparent transparent}#sidebar-body::-webkit-scrollbar-thumb{background:transparent}#sidebar-body.scrollbar-near{scrollbar-color:var(--scrollbar-thumb) transparent}#sidebar-body.scrollbar-near::-webkit-scrollbar-thumb{background:var(--scrollbar-thumb)}
+.image-surface{position:relative;display:inline-block;text-align:left;vertical-align:top}.image-surface canvas{margin:0}
+.image-text-box,.image-text-controls{position:absolute;z-index:5}.image-text-box{border:1px dashed var(--fg);min-width:140px}.image-text-box textarea{display:block;min-width:140px;width:260px;min-height:70px;padding:0;border:0;outline:0;background:transparent;line-height:1.2;font-family:sans-serif;resize:both}.image-text-handle{cursor:move;touch-action:none;user-select:none;font:11px/20px sans-serif;background:var(--sidebar);color:var(--fg);padding:0 5px}.image-text-box>.image-text-handle{position:absolute;bottom:100%;left:0}.image-text-controls{display:flex;align-items:center;gap:5px;white-space:nowrap;background:var(--sidebar);border:1px solid var(--border);padding:4px;font:12px sans-serif}.image-text-controls input{width:55px;background:var(--bg);color:var(--fg);border:1px solid var(--border)}.image-text-controls input[aria-label="文字颜色"],.image-color-hex{width:85px}
+.image-color-swatch{width:16px;height:16px;min-width:16px;padding:0;border:1px solid var(--border);border-radius:2px}.image-text-box textarea{white-space:pre;overflow:auto}
+
+.tab{font-size:var(--sidebar-font-size,13px)}

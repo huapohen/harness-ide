@@ -1,0 +1,8 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {imageText} from '../src/image-text.js';
+test('inline text preserves draft, independent drag positions, color and multiline canvas placement',()=>{
+ const old=globalThis.document,nodes=[];globalThis.document={createElement(tag){const n={tag,style:{},children:[],value:'',setAttribute(k,v){this[k]=v;},append(...items){this.children.push(...items);},focus(){},remove(){},setPointerCapture(){this.captured=true;},hasPointerCapture(){return this.captured;},releasePointerCapture(){this.captured=false;},checkValidity:()=>true};nodes.push(n);return n;}};
+ try{const surface=document.createElement('div');let z=.5;const editor=imageText(surface,{zoom:()=>z,changed(){},apply(){}});editor.start({x:20,y:30},'#ffffff');const input=nodes.find(n=>n.tag==='textarea');input.value='one\ntwo';input.oninput();const draft=editor.snapshot();assert.equal(draft.text,'one\ntwo');
+ const handle=nodes.find(n=>n.className==='image-text-handle');handle.onpointerdown({button:0,clientX:0,clientY:0,pointerId:1,preventDefault(){},stopPropagation(){}});handle.onpointermove({clientX:10,clientY:5,pointerId:1});handle.onpointerup({pointerId:1});assert.equal(editor.snapshot().x,40);assert.equal(editor.snapshot().y,40);assert.equal(editor.snapshot().controlsX,draft.controlsX);
+ const saved=editor.snapshot();editor.clear();assert.equal(editor.snapshot(),null);editor.restore(saved);z=1;editor.render();const calls=[],context={save(){},restore(){},fillText(...args){calls.push(args);}};editor.apply(context);assert.deepEqual(calls,[['one',40,40],['two',40,78.4]]);assert.equal(context.fillStyle,'#ffffff');assert.equal(editor.snapshot(),null);
+ }finally{globalThis.document=old;}
+});
