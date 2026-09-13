@@ -302,3 +302,6 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 
 .git-message::placeholder{color:var(--muted);opacity:.65}
 .git-source-settings{margin-bottom:8px}.git-source-settings input{width:100%;min-width:0;background:var(--bg);color:var(--fg);border:1px solid var(--border);padding:5px;border-radius:4px}.git-sync{display:flex;gap:6px;margin-bottom:8px}.git-sync button{flex:1;color:var(--muted);border:1px solid var(--border)}
+
+.git-actions>button.git-current-branch{flex:1;min-width:0;width:auto;height:auto;min-height:24px;white-space:normal;overflow:visible;overflow-wrap:anywhere;text-overflow:clip;text-align:left;font-size:11px;line-height:18px}
+.git-actions>button:not(.git-current-branch){flex:0 0 24px}
