@@ -273,3 +273,5 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 
 .tab-actions>button{opacity:0;transition:opacity .12s}
 .tab-actions>button:hover,.tab-actions>button:focus-visible{opacity:1}
+
+.corner-controls button:hover,.corner-controls button:focus-visible{color:var(--strong)}
