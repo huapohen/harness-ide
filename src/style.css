@@ -204,3 +204,5 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 
 /* Reserve the scrollbar lane before expansion; do not anchor scrolling to newly revealed children. */
 #sidebar-body{overflow-y:scroll;overflow-anchor:none}
+
+.html-navigation{height:28px;display:flex;align-items:center;background:var(--bg);flex-shrink:0}.html-navigation button{font-size:18px;padding:0 10px}.html-navigation button:disabled{opacity:.3;cursor:default}.preview:has(>.html-navigation){display:flex;flex-direction:column}.preview:has(>.html-navigation)>iframe{flex:1;min-height:0}
