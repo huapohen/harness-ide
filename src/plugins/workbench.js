@@ -1,3 +1,4 @@
+import {installWindowDrag} from '../window-drag.js';
 import {closableTabs} from '../../shared/session.js';
 import {replacementTab} from '../../shared/preview-tabs.js';
 import {applyFonts} from '../font-settings.js';
@@ -116,11 +117,7 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
  newButton.onclick=e=>{e.stopPropagation();const native=window.webkit?.messageHandlers.windowChrome;if(native){native.postMessage({action:'newMenu'});return;}const r=newButton.getBoundingClientRect();menuAt(r.left,r.bottom,[{label:'terminal',run:()=>api.run('terminal.new')},...['file.txt','file.md','file'].map(name=>({label:name==='file.txt'?'txt':name==='file.md'?'md':name,run:()=>api.run('explorer.newFile',name)}))]);};
  $('.tab-actions').append(newButton,button('◫','左右切分当前终端',()=>api.run('terminal.splitVertical')),button('⬒','上下切分当前终端',()=>api.run('terminal.splitHorizontal')));
  $('.activity').oncontextmenu=e=>{e.preventDefault();menuAt(e.clientX,e.clientY,[...panels].map(([id,p])=>({label:p.label,checked:!hiddenPanels.has(id),run:()=>{if(hiddenPanels.has(id))hiddenPanels.delete(id);else hiddenPanels.add(id);p.b.hidden=hiddenPanels.has(id);localStorage.setItem('hidden-panels',JSON.stringify([...hiddenPanels]));}})));};
- let dragStart=null;
- $('.titlebar').onpointerdown=e=>{if(e.button===0&&!e.target.closest('button'))dragStart={x:e.clientX,y:e.clientY};};
- $('.titlebar').onpointermove=e=>{if(dragStart&&(e.buttons&1)&&Math.hypot(e.clientX-dragStart.x,e.clientY-dragStart.y)>4){dragStart=null;window.webkit?.messageHandlers.windowChrome?.postMessage({action:'drag'});}};
- $('.titlebar').onpointerup=()=>{dragStart=null;};
- $('.titlebar').ondblclick=e=>{if(!e.target.closest('button'))window.webkit?.messageHandlers.windowChrome?.postMessage({action:'zoom'});};
+ installWindowDrag(root,action=>window.webkit?.messageHandlers.windowChrome?.postMessage({action}));
  $('#theme-button').onclick=()=>api.run('theme.toggle');$('#workspace-title').onclick=()=>api.run('workspace.open').catch(logMessage);
  async function palette(){const d=el('dialog','palette'),input=el('input'),list=el('div');input.placeholder='输入命令…';d.append(input,list);const draw=()=>{list.replaceChildren();for(const [id,c]of commands)if((c.label+' '+id).toLowerCase().includes(input.value.toLowerCase()))list.append(button(c.label,'执行 '+c.label,()=>{d.close();return c.run();},'command'));};input.oninput=draw;d.onclose=()=>d.remove();document.body.append(d);draw();d.showModal();}
  const registrations={
