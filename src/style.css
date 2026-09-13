@@ -279,3 +279,7 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 .activity{padding-top:3px;gap:2px}
 .view-hide-titlebar .activity{padding-top:10px}
 .activity-button{height:40px}
+
+/* Match the left divider: the sidebar border draws the line; the handle stays invisible. */
+.secondary-divider{width:5px;flex:0 0 5px;margin-left:-2px;margin-right:-3px;z-index:5;background:transparent;transition:none}
+.secondary-divider:hover,.secondary-divider:active,.secondary-divider:focus,.secondary-divider:focus-visible{background:transparent;outline:none}
