@@ -8,7 +8,7 @@ import {sourceEditor} from '../source-editor.js';
 export default {id:'documents',requires:['api','workbench'],async activate(ctx){
  const api=ctx.get('api'),wb=ctx.get('workbench'),viewers=new Map(),pending=new Map();let untitled=0,syncing=false;
  const opening=inFlight();
- const enqueueSave=saveQueue(),automatic=autoSave({tabs:()=>wb.tabs,ready:()=>window.harnessHotReady&&!window.harnessHotUpdating&&!window.harnessQuitting&&!wb.isClosing()&&!document.querySelector('dialog[open],.tab-rename,.explorer-rename'),onError:(error,tab)=>logMessage('Auto Save · '+tab.title+': '+error.message)});
+ const enqueueSave=saveQueue(),automatic=autoSave({tabs:()=>wb.tabs.filter(t=>t.previewGroup!=='right'),ready:()=>window.harnessHotReady&&!window.harnessHotUpdating&&!window.harnessQuitting&&!wb.isClosing()&&!document.querySelector('dialog[open],.tab-rename,.explorer-rename'),onError:(error,tab)=>logMessage('Auto Save · '+tab.title+': '+error.message)});
  let autoSaveEnabled=(await api('settings/layout/read')).autoSave===true,togglePending=Promise.resolve();
  const applyAutoSave=()=>{automatic.set(autoSaveEnabled);window.webkit?.messageHandlers.windowChrome?.postMessage({action:'autoSave',enabled:autoSaveEnabled});};
  wb.flushFileOperations=async()=>{await togglePending.catch(()=>{});await enqueueSave.idle();};ctx.effect(()=>delete wb.flushFileOperations);
@@ -80,6 +80,7 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
   'file.new':['文件 · 新建文件…',()=>{const r=wb.$('.titlebar').getBoundingClientRect();menuAt(100,r.bottom,[...['file.txt','file.md','file'].map(n=>({label:n==='file.txt'?'txt':n==='file.md'?'md':n,run:()=>wb.run('explorer.newFile',n)}))]);}],
   'file.openDialog':['文件 · 打开…',async()=>{const path=await dialog('open');if(path)await open(path,{external:true});}],
   'file.chooseFolder':['文件 · 选择文件夹',()=>dialog('folder')],
+  'file.chooseFile':['文件 · 选择文件',()=>dialog('open')],
   'file.openFolderDialog':['文件 · 打开文件夹…',async()=>{const path=await dialog('folder');if(path)await window.harnessOpenPath(path,true);}],
   'files.saveAs':['文件 · 另存为…',()=>{const t=wb.current();return t?.kind==='file'?t.saveAs?.():undefined;}],
   'markdown.togglePreview':['Markdown · 切换预览 / 编辑',()=>wb.active()?.togglePreview?.()],

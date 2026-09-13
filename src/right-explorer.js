@@ -1,10 +1,17 @@
+import {autoSave} from './auto-save.js';
 import {el,button,form,menuAt,logMessage} from './ui.js';
 import {fileIcon} from './file-icons.js';
 import {selectRange} from '../shared/range-selection.js';
 
 export async function rightExplorer(ctx){
  const api=ctx.get('api'),wb=ctx.get('workbench'),host=wb.$('.secondary-content');
- let info,expanded=new Set(),selected='.',anchor='.',multi=new Set(),rootExpanded=true,scrollTop=0,revision=0,disposed=false,painting=false,timer;
+ let clipboard=null,info,expanded=new Set(),selected='.',anchor='.',multi=new Set(),rootExpanded=true,scrollTop=0,revision=0,disposed=false,painting=false,timer;
+ const savedSettings=await api('settings/layout/read');let rightRecent=savedSettings.rightRecent||[],rightAutoSave=savedSettings.rightAutoSave===true;
+ const rightTabs=()=>wb.tabs.filter(t=>t.previewGroup==='right');
+ const automatic=autoSave({tabs:rightTabs,ready:()=>window.harnessHotReady&&!window.harnessHotUpdating&&!window.harnessQuitting&&!wb.isClosing()&&!document.querySelector('dialog[open],.explorer-rename'),onError:logMessage});automatic.set(rightAutoSave);ctx.on('tabs.changed',()=>automatic.schedule());ctx.effect(()=>automatic.dispose());
+ const remember=async(path,directory=false)=>{rightRecent=[{path,directory},...rightRecent.filter(x=>x.path!==path)].slice(0,20);await api('settings/layout/write',{rightRecent});};
+ const openPath=async path=>{await wb.run('file.open')(path,{external:true,temporary:true,previewGroup:'right'});await remember(path);};
+ const current=()=>{const t=wb.current();return t?.previewGroup==='right'?t:null;};
  const parent=p=>p.includes('/')?p.slice(0,p.lastIndexOf('/')):'.',join=(p,n)=>p==='.'?n:p+'/'+n;
  const absolute=p=>info.root+(p==='.'?'':'/'+p);
  const request=(action,data={})=>api('right/explorer',{...data,root:info?.root,action});
@@ -15,15 +22,25 @@ export async function rightExplorer(ctx){
  host.onpointermove=e=>host.classList.toggle('scrollbar-near',host.getBoundingClientRect().right-e.clientX<22);host.onpointerleave=()=>host.classList.remove('scrollbar-near');
  host.onscroll=()=>{if(painting)return;scrollTop=host.scrollTop;schedule();};
  const choose=async()=>{const root=await wb.run('file.chooseFolder');if(root)await connect(root);};
- const closeFolder=async()=>{await persist();clearTimeout(timer);revision++;info=undefined;expanded.clear();multi.clear();scrollTop=0;host.replaceChildren();host.oncontextmenu=null;await api('settings/layout/write',{secondaryRoot:null});};
- const chooseButton=button('','右侧 File',()=>{const r=chooseButton.getBoundingClientRect();menuAt(r.right-190,r.bottom,[{label:'Open Folder…',run:choose},{label:'Close Folder',disabled:!info,run:closeFolder},null,{label:'Toggle Side Bar',run:()=>wb.run('view.secondary')}]);},'right-file-menu');chooseButton.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';wb.$('.corner-controls').insertBefore(chooseButton,wb.$('.secondary-toggle'));
+ const closeFolder=async()=>{await persist();clearTimeout(timer);revision++;info=undefined;expanded.clear();multi.clear();scrollTop=0;host.replaceChildren();host.oncontextmenu=e=>emptyContext(e);await api('settings/layout/write',{secondaryRoot:null});};
+ const chooseButton=button('','右侧 File',()=>{const r=chooseButton.getBoundingClientRect();menuAt(r.right-190,r.bottom,[
+ {label:'New Text File',run:()=>wb.run('file.open')('',{fresh:true,previewGroup:'right'})},
+ {label:'New File…',disabled:!info,run:()=>{const row=currentRows().find(x=>x.dataset.path===selected);return create(row?.dataset.directory==='true'?selected:parent(selected),false);}},null,
+ {label:'Open…',run:async()=>{const path=await wb.run('file.chooseFile');if(path)await openPath(path);}},
+ {label:'Open Folder…',run:choose},
+ {label:'Open Recent',run:()=>menuAt(r.right-250,r.bottom,rightRecent.length?rightRecent.map(x=>({label:x.path,run:()=>x.directory?connect(x.path):openPath(x.path)})):[{label:'No Recent Items',disabled:true}])},null,
+ {label:'Save',disabled:!current()?.save,run:()=>current()?.save?.()},
+ {label:'Save As…',disabled:!current()?.saveAs,run:()=>current()?.saveAs?.()},
+ {label:'Save All',run:async()=>{for(const t of rightTabs())if(t.dirty)await t.save?.();}},null,
+ {label:'Auto Save',checked:rightAutoSave,run:async()=>{const next=!rightAutoSave;await api('settings/layout/write',{rightAutoSave:next});rightAutoSave=next;automatic.set(next);}},null,
+ {label:'Close Folder',disabled:!info,run:closeFolder},{label:'Toggle Side Bar',run:()=>wb.run('view.secondary')}]);},'right-file-menu');chooseButton.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3 6h7l2 2h9v12H3zM3 6V4h7l2 2h8v2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';wb.$('.corner-controls').insertBefore(chooseButton,wb.$('.secondary-toggle'));
  ctx.effect(()=>{disposed=true;revision++;clearTimeout(timer);persist();chooseButton.remove();host.onscroll=host.oncontextmenu=host.onpointermove=host.onpointerleave=null;host.replaceChildren();});
  const currentRows=()=>[...host.querySelectorAll('.file-row')];
  function mark(row,p,event={}){
   if(event.shiftKey){multi=selectRange(currentRows().map(r=>r.dataset.path),anchor,p,multi,!!event.metaKey);}else{anchor=p;if(event.metaKey){if(multi.has(p))multi.delete(p);else multi.add(p);}else multi=new Set([p]);}
   selected=p;for(const r of currentRows()){r.classList.toggle('selected',multi.has(r.dataset.path));r.setAttribute('aria-selected',String(multi.has(r.dataset.path)));}schedule();
  }
- const open=async p=>{await wb.run('file.open')(absolute(p),{external:true,temporary:true,previewGroup:'right'});};
+ const open=p=>openPath(absolute(p));
  const affected=p=>{const target=absolute(p),primary=ctx.get('workspace').info();return wb.tabs.filter(t=>{const full=t.external?t.path:!primary.host&&t.path?primary.root+'/'+t.path:null;return full===target||full?.startsWith(target+'/');});};
  async function remove(paths){for(const p of paths){for(const t of affected(p))if(!await wb.close(t))return;await manage('delete',p);for(const x of [...expanded])if(x===p||x.startsWith(p+'/'))expanded.delete(x);}multi.clear();selected='.';await persist();await render();}
  async function create(dir,directory){const values=await form('',[{name:'name',label:'',ariaLabel:directory?'Folder name':'File name'}],'创建',{compact:true,ariaLabel:directory?'New Folder':'New File'});if(!values)return;const p=join(dir,values.name);await manage('create',p,{directory});rootExpanded=true;expanded.add(dir);selected=p;multi=new Set([p]);await persist();await render();if(!directory)await open(p);}
@@ -35,7 +52,12 @@ export async function rightExplorer(ctx){
   requestAnimationFrame(()=>{if(input.isConnected){input.focus();const dot=name.lastIndexOf('.');input.setSelectionRange(0,row.dataset.directory==='true'||dot<=0?name.length:dot);}});
  }
  async function copyPath(p){const text=absolute(p),handler=window.webkit?.messageHandlers.clipboard;if(handler)handler.postMessage({id:crypto.randomUUID(),action:'write',text});else await navigator.clipboard.writeText(text);}
- function context(e,p='.',directory=true,row){e.preventDefault();e.stopPropagation();if(row&&!multi.has(p))mark(row,p);const dir=directory?p:parent(p);menuAt(e.clientX,e.clientY,[{label:'New File…',run:()=>create(dir,false)},{label:'New Folder…',run:()=>create(dir,true)},null,{label:'Open Folder…',run:choose},{label:'Refresh',run:render},{label:'Collapse Folders in Explorer',run:async()=>{expanded.clear();await persist();await render();}},null,{label:'Copy Path',run:()=>copyPath(p)},{label:'Reveal in Finder',run:()=>manage('reveal',p)},...(p==='.'?[]:[null,{label:'Rename…',run:()=>rename(p,row)},{label:'Delete',run:()=>remove([...multi].filter(x=>![...multi].some(other=>x!==other&&x.startsWith(other+'/'))))}])]);}
+ const copyText=async text=>{const handler=window.webkit?.messageHandlers.clipboard;if(handler)handler.postMessage({id:crypto.randomUUID(),action:'write',text});else await navigator.clipboard.writeText(text);};
+ async function paste(dir){if(!clipboard)return;const data=await form('粘贴到 '+dir,[{name:'name',label:'名称',value:clipboard.path.split('/').at(-1)}]);if(!data)return;if(clipboard.cut)for(const t of affected(clipboard.path))if(!await wb.close(t))return;await manage(clipboard.cut?'move':'copy',clipboard.path,{destination:join(dir,data.name)});if(clipboard.cut)clipboard=null;await render();}
+ async function terminal(dir){const path=absolute(dir);await wb.run('terminal.new');const t=wb.current();let attempts=0;const timer=setInterval(()=>{if(t.isReady&&t.sendData){clearInterval(timer);t.sendData("cd -- '"+path.replaceAll("'","'\\''")+"'\r");}else if(++attempts>100){clearInterval(timer);logMessage('终端尚未就绪，请重试');}},100);}
+ function emptyContext(e){e.preventDefault();e.stopPropagation();menuAt(e.clientX,e.clientY,[{label:'Open Folder…',run:choose},{label:'Close Folder',disabled:true},null,{label:'Toggle Side Bar',run:()=>wb.run('view.secondary')}]);}
+ function blankContext(e){if(!info)return emptyContext(e);e.preventDefault();e.stopPropagation();menuAt(e.clientX,e.clientY,[{label:'New File…',run:()=>create('.',false)},{label:'New Folder…',run:()=>create('.',true)},null,{label:'Reveal in Finder',run:()=>manage('reveal','.')},{label:'Open in Integrated Terminal',run:()=>terminal('.')},null,...(window.webkit?.messageHandlers.windowChrome?[{label:'Share…',run:()=>window.webkit.messageHandlers.windowChrome.postMessage({action:'share',path:info.root})},null]:[]),{label:'Paste',disabled:!clipboard,run:()=>paste('.')},null,{label:'Copy Path',run:()=>copyPath('.')},{label:'Copy Relative Path',run:()=>copyText('.')},null,{label:'Refresh',run:render},{label:'Collapse Folders in Explorer',run:async()=>{expanded.clear();await persist();await render();}},null,{label:'Close Folder',run:closeFolder},{label:'Toggle Side Bar',run:()=>wb.run('view.secondary')}]);}
+ function context(e,p='.',directory=true,row){if(p==='.')return blankContext(e);e.preventDefault();e.stopPropagation();if(row&&!multi.has(p))mark(row,p);const dir=directory?p:parent(p);menuAt(e.clientX,e.clientY,[{label:'New File…',run:()=>create(dir,false)},{label:'New Folder…',run:()=>create(dir,true)},null,{label:'Open Folder…',run:choose},{label:'Refresh',run:render},{label:'Collapse Folders in Explorer',run:async()=>{expanded.clear();await persist();await render();}},null,{label:'Copy Path',run:()=>copyPath(p)},{label:'Reveal in Finder',run:()=>manage('reveal',p)},...(p==='.'?[]:[null,{label:'Cut',run:()=>{clipboard={path:p,cut:true};}},{label:'Copy',run:()=>{clipboard={path:p,cut:false};}},{label:'Paste',disabled:!clipboard,run:()=>paste(dir)},{label:'Rename…',run:()=>rename(p,row)},{label:'Delete',run:()=>remove([...multi].filter(x=>![...multi].some(other=>x!==other&&x.startsWith(other+'/'))))}])]);}
  async function render(){if(!info||disposed)return;painting=true;const restoreScroll=scrollTop,version=++revision,body=el('div','right-tree-body'),root=button('',info.name,async()=>{rootExpanded=!rootExpanded;await persist();await render();},'tree-root');root.title=info.root;root.setAttribute('aria-expanded',String(rootExpanded));root.append(el('span','tree-chevron codicon-'+(rootExpanded?'chevron-down':'chevron-right')),el('span','tree-label',info.name));root.oncontextmenu=e=>context(e);body.append(root);const tree=el('div','tree-root-children');tree.role='tree';tree.setAttribute('aria-label','右侧目录树');body.append(tree);host.oncontextmenu=e=>context(e);host.replaceChildren(body);
   async function branch(container,p='.',depth=0){const entries=await request('list',{path:p});if(version!==revision||disposed)return;entries.sort((a,b)=>Number(b.directory)-Number(a.directory)||a.name.localeCompare(b.name));
    for(const entry of entries){const rel=join(p,entry.name),row=el('div','file-row'),children=el('div','tree-children');row.role='treeitem';row.tabIndex=0;row.dataset.path=rel;row.dataset.directory=String(entry.directory);row.style.paddingLeft=(18+depth*10)+'px';row.title=absolute(rel);row.setAttribute('aria-level',String(depth+1));row.setAttribute('aria-selected',String(multi.has(rel)));row.classList.toggle('selected',multi.has(rel));
@@ -50,7 +72,7 @@ export async function rightExplorer(ctx){
   }
   try{if(rootExpanded)await branch(tree);if(version===revision)host.scrollTop=restoreScroll;}catch(e){if(version===revision)tree.append(el('p','panel-note',e.message));}finally{if(version===revision)painting=false;}
  }
- async function connect(root){const next=await api('right/explorer',{action:'info',root});await persist();const state=await api('settings/rightExplorer/read',{workspace:{root:next.root}});if(disposed)return;info=next;expanded=new Set(state.expanded);rootExpanded=state.rootExpanded;selected=state.selected||'.';anchor=selected;multi=new Set([selected]);scrollTop=state.scrollTop||0;await api('settings/layout/write',{secondaryRoot:next.root});await render();}
+ async function connect(root){const next=await api('right/explorer',{action:'info',root});await persist();const state=await api('settings/rightExplorer/read',{workspace:{root:next.root}});if(disposed)return;info=next;clipboard=null;expanded=new Set(state.expanded);rootExpanded=state.rootExpanded;selected=state.selected||'.';anchor=selected;multi=new Set([selected]);scrollTop=state.scrollTop||0;await api('settings/layout/write',{secondaryRoot:next.root});await remember(next.root,true);await render();}
  ctx.effect(wb.command('rightExplorer.openFolder','右侧目录树 · 选择根目录',choose));
- const saved=await api('settings/layout/read');try{if(saved.secondaryRoot!==null)await connect(saved.secondaryRoot);}catch(e){host.replaceChildren(el('p','panel-note','右侧目录无法打开：'+e.message),button('Open Folder…','选择右侧根目录',choose));}
+ const saved=await api('settings/layout/read');try{if(saved.secondaryRoot!==null)await connect(saved.secondaryRoot);else host.oncontextmenu=emptyContext;}catch(e){host.replaceChildren(el('p','panel-note','右侧目录无法打开：'+e.message),button('Open Folder…','选择右侧根目录',choose));}
 }
