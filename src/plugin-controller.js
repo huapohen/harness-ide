@@ -8,7 +8,7 @@ export async function pluginController(kernel,entries,modules){
   const old=states[id]||'enabled',wb=kernel.get('workbench');
   try{
    if(state!=='enabled'&&id==='terminal'&&wb.tabs.some(t=>t.kind==='terminal'))throw Error('Close terminal tabs before disabling this plugin.');
-   if(state!=='enabled'&&['markdown','html','pdf'].includes(id)&&wb.tabs.some(t=>t.path&&({markdown:['md','markdown'],html:['html','htm'],pdf:['pdf']}[id].includes(t.path.split('.').pop()))))throw Error('Close this plugin’s file tabs first.');
+   if(state!=='enabled'&&['markdown','html','pdf'].includes(id)&&wb.tabs.some(t=>t.path&&({markdown:['md','markdown'],html:['html','htm'],pdf:['pdf']}[id].includes(t.path.split('.').pop().toLowerCase()))))throw Error('Close this plugin’s file tabs first.');
    if(state==='enabled'&&old==='uninstalled'){await api('settings/plugins/write',{id,state});catalog=await api('settings/plugins/read',{version});}
    if(state==='enabled'&&!kernel.plugins.has(id))await kernel.mount(await load(id),config(entry));
    if(state!=='enabled'&&kernel.plugins.has(id))await kernel.unmount(id);

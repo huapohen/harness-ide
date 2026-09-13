@@ -16,7 +16,7 @@ export async function startHotUpdates(kernel){
   await wb.restoreLayout(snapshot.layout);setTimeout(()=>{for(const t of wb.tabs)t.hotRestoreScroll?.();},0);for(const t of wb.tabs)t.commitUpdate?.();sessionStorage.removeItem('harness-hot-snapshot');sessionStorage.removeItem('harness-hot-navigation');window.harnessHotUpdating=false;
  }
  await restore();window.harnessHotReady=true;
- async function snapshot(){await wb.flushFileOperations?.();if(document.querySelector('dialog[open],.tab-rename'))throw Error('Waiting for the current dialog or rename to finish');
+ async function snapshot(){await wb.flushFileOperations?.();if(document.querySelector('dialog[open],.tab-rename,.explorer-rename'))throw Error('Waiting for the current dialog or rename to finish');
   const tabs=[];
   for(const t of wb.tabs){if(t.kind!=='terminal'&&t.kind!=='settings'&&!t.path&&!t.hotSnapshot)throw Error('Waiting for unsupported preview to close');if(t.dirty&&!t.hotSnapshot)throw Error('Waiting for unsaved image or settings changes');tabs.push({id:t.id,title:t.title,kind:t.kind,path:t.path,external:t.external,pinned:t.pinned,temporary:t.temporary,state:t.hotSnapshot?.(),cols:t.terminal?.cols,rows:t.terminal?.rows,scrollTop:t.element.scrollTop});}
   const result={tabs,layout:wb.snapshotLayout(),unrestoredFiles:wb.unrestoredFiles||[]};

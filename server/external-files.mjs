@@ -2,7 +2,19 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 const hash=b=>createHash('sha256').update(b).digest('hex');
+const writes=globalThis[Symbol.for('harness.fileWrites')] ||= new Map();
 export async function externalFile(q){
+ if(typeof q.path!=='string'||!path.isAbsolute(q.path))throw Error('需要文件绝对路径');
+ if(q.action!=='write')return operate(q);
+ return withFileWrite(q.path,()=>operate(q));
+}
+export async function withFileWrite(file,operation){
+ let key;try{const stat=await fs.stat(file);key=stat.dev+':'+stat.ino;}catch(error){if(error.code!=='ENOENT')throw error;key=path.join(await fs.realpath(path.dirname(file)),path.basename(file));}
+ const task=(writes.get(key)||Promise.resolve()).catch(()=>{}).then(operation);writes.set(key,task);
+ try{return await task;}finally{if(writes.get(key)===task)writes.delete(key);}
+}
+
+async function operate(q){
  if(typeof q.path!=='string'||!path.isAbsolute(q.path))throw Error('需要文件绝对路径');
  if(q.action==='rename'){
   if(typeof q.name!=='string'||!q.name.trim()||q.name==='.'||q.name==='..'||/[\/\x00]/.test(q.name))throw Error('Invalid file name');

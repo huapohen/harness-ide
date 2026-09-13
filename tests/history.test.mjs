@@ -6,3 +6,10 @@ test('empty provided snapshot is backed up exactly without rereading changed dis
  const record=await history.capture('file.txt',false,'Opened','');assert.equal(record.size,0);assert.equal((await history.entry(record.id)).data,'');
  }finally{await fs.rm(tmp,{recursive:true,force:true});}
 });
+test('restore rechecks version after backup, preserving a concurrent new save',async()=>{
+ const tmp=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'ide-history-race-')));
+ try{const file=tmp+'/file.txt';await fs.writeFile(file,'old');const w=new Workspace(tmp),history=new LocalHistory(w,tmp+'/history');const old=await history.capture('file.txt');await fs.writeFile(file,'current');const {version}=await w.read('file.txt');
+ const original=history.capture.bind(history);history.capture=async(...args)=>{const result=await original(...args);if(args[2]==='Before Restore')await fs.writeFile(file,'concurrent save');return result;};
+ await assert.rejects(history.restore(old.id,version),/已变化/);assert.equal(await fs.readFile(file,'utf8'),'concurrent save');
+ }finally{await fs.rm(tmp,{recursive:true,force:true});}
+});

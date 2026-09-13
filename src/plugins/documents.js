@@ -1,3 +1,4 @@
+import {inFlight} from '../inflight.js';
 import {autoSave,saveQueue} from '../auto-save.js';
 import {csvPreview} from '../csv-preview.js';
 const resultData=bytes=>{let text='';for(let i=0;i<bytes.length;i+=8192)text+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(text);};
@@ -6,7 +7,8 @@ import {el,button,logMessage,menuAt} from '../ui.js';
 import {sourceEditor} from '../source-editor.js';
 export default {id:'documents',requires:['api','workbench'],async activate(ctx){
  const api=ctx.get('api'),wb=ctx.get('workbench'),viewers=new Map(),pending=new Map();let untitled=0,syncing=false;
- const enqueueSave=saveQueue(),automatic=autoSave({tabs:()=>wb.tabs,ready:()=>window.harnessHotReady&&!window.harnessHotUpdating&&!window.harnessQuitting&&!wb.isClosing()&&!document.querySelector('dialog[open],.tab-rename'),onError:(error,tab)=>logMessage('Auto Save · '+tab.title+': '+error.message)});
+ const opening=inFlight();
+ const enqueueSave=saveQueue(),automatic=autoSave({tabs:()=>wb.tabs,ready:()=>window.harnessHotReady&&!window.harnessHotUpdating&&!window.harnessQuitting&&!wb.isClosing()&&!document.querySelector('dialog[open],.tab-rename,.explorer-rename'),onError:(error,tab)=>logMessage('Auto Save · '+tab.title+': '+error.message)});
  let autoSaveEnabled=(await api('settings/layout/read')).autoSave===true,togglePending=Promise.resolve();
  const applyAutoSave=()=>{automatic.set(autoSaveEnabled);window.webkit?.messageHandlers.windowChrome?.postMessage({action:'autoSave',enabled:autoSaveEnabled});};
  wb.flushFileOperations=async()=>{await togglePending.catch(()=>{});await enqueueSave.idle();};ctx.effect(()=>delete wb.flushFileOperations);
@@ -17,7 +19,8 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
  function dialog(action,name=''){const handler=window.webkit?.messageHandlers.nativeFiles;if(!handler){logMessage('请在 macOS 应用中使用文件选择框');return Promise.resolve(null);}const id=crypto.randomUUID();return new Promise(resolve=>{pending.set(id,resolve);handler.postMessage({id,action,name});});}
  window.harnessFileDialogResult=(id,path)=>{pending.get(id)?.(path||null);pending.delete(id);};
  const recent=(path,directory=false)=>window.webkit?.messageHandlers.nativeFiles?.postMessage({action:'recent',path,directory});
- async function open(path,{external=false,fresh=false,duplicate=false,temporary=false}={}){
+ function open(path,options={}){return options.fresh||options.duplicate?openFile(path,options):opening(JSON.stringify([!!options.external,path]),()=>openFile(path,options));}
+ async function openFile(path,{external=false,fresh=false,duplicate=false,temporary=false}={}){
   const identity=duplicate?'split:'+crypto.randomUUID():fresh?'untitled:'+crypto.randomUUID():(external?'external:':'file:')+path;
   const existing=wb.tabs.find(t=>t.id===identity);if(existing){wb.open(existing);return;}
   const result=fresh?{data:'',version:null}:await api(external?'external':'read',{action:'read',path});
@@ -45,8 +48,9 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
   }
   if(ext==='pdf'){const viewer=viewers.get(ext);if(!viewer)throw Error('PDF plugin disabled');const saveAs=async()=>{const destination=await dialog('save',tab.title);if(!destination)return false;let targetVersion=null;try{targetVersion=(await api('external',{action:'read',path:destination})).version;}catch(e){if(!/ENOENT/.test(e.message))throw e;}await api('external',{action:'write',path:destination,data:result.data,version:targetVersion});recent(destination);return true;};tab.saveAs=()=>enqueueSave(saveAs);tab.dispose=viewer(content,bytes);toolbar.append(el('span','','PDF · '+tab.title));wb.open(tab);if(external)recent(path);return;}
   if(['doc','docx','ppt','pptx','xls','xlsx','odt','odp','ods','rtf'].includes(ext)){
+   let previewDisposed=false,url;tab.dispose=()=>{previewDisposed=true;if(url)URL.revokeObjectURL(url);};
    const note=el('p','panel-note','正在生成文档预览…');content.append(note);wb.open(tab);
-   try{const result=await api('office/preview',{data:resultData(bytes),ext});const pdf=Uint8Array.from(atob(result.data),c=>c.charCodeAt(0));const url=URL.createObjectURL(new Blob([pdf],{type:'application/pdf'}));const frame=el('iframe');frame.title=tab.title+' · 只读预览';frame.src=url;content.replaceChildren(frame);tab.dispose=()=>URL.revokeObjectURL(url);}catch(error){note.textContent='预览失败：'+error.message;}return;
+   try{const result=await api('office/preview',{data:resultData(bytes),ext});if(previewDisposed)return;const pdf=Uint8Array.from(atob(result.data),c=>c.charCodeAt(0));url=URL.createObjectURL(new Blob([pdf],{type:'application/pdf'}));const frame=el('iframe');frame.title=tab.title+' · 只读预览';frame.src=url;content.replaceChildren(frame);}catch(error){note.textContent='预览失败：'+error.message;}return;
   }
   if(bytes.slice(0,8192).includes(0))throw Error('此文件是二进制格式，暂不支持编辑');
   let saved=new TextDecoder().decode(bytes);const source=el('textarea','source-editor');source.value=saved;source.setSelectionRange(0,0);source.spellcheck=false;source.setAttribute('aria-label','文件内容');tab.editor=source;tab.focus=()=>{if(source.isConnected)source.focus();};let editor=sourceEditor(source,/(^|\/)\.ssh\/config$/.test(path)?'sshconfig':ext);tab.dispose=()=>editor.dispose();const preview=el('div','preview');let mode=['md','markdown'].includes(ext)?'source':viewers.has(ext)?'preview':'source';
@@ -62,7 +66,7 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
   source.oninput=()=>{tab.dirty=source.value!==saved;if(!syncing&&tab.path){syncing=true;try{for(const other of wb.tabs)if(other!==tab&&other.path===tab.path&&!!other.external===!!tab.external&&other.editor){other.editor.value=source.value;other.refreshPreview?.();}}finally{syncing=false;}}wb.render();};source.onkeydown=e=>{if(e.key==='Tab'){e.preventDefault();source.setRangeText('    ',source.selectionStart,source.selectionEnd,'end');source.dispatchEvent(new Event('input'));}};
   const encode=value=>btoa(Array.from(new TextEncoder().encode(value),x=>String.fromCharCode(x)).join(''));
   const saveAs=async()=>{const destination=await dialog('save',tab.title);if(!destination)return false;const collision=wb.tabs.find(t=>t!==tab&&t.path===destination);if(collision){logMessage('目标文件已在另一个标签中打开，请先关闭该标签');return false;}let targetVersion=null;try{targetVersion=(await api('external',{action:'read',path:destination})).version;}catch(e){if(!/ENOENT/.test(e.message))throw e;}
-   const value=source.value,r=await api('external',{action:'write',path:destination,data:encode(value),version:targetVersion});version=r.version;saved=value;tab.dirty=source.value!==saved;path=destination;external=true;fresh=false;tab.external=true;tab.path=path;tab.id='external:'+path;tab.title=path.split('/').at(-1);ext=path.split('.').at(-1).toLowerCase();editor.dispose();editor=sourceEditor(source,ext);mode='source';typeLabel.textContent=ext.toUpperCase()+' DOCUMENT';tab.togglePreview=ext==='md'?toggleMode:undefined;show();wb.render();recent(path);return true;};
+   const value=source.value,r=await api('external',{action:'write',path:destination,data:encode(value),version:targetVersion});version=r.version;saved=value;tab.dirty=source.value!==saved;path=destination;external=true;fresh=false;tab.external=true;tab.path=path;tab.id='external:'+path;tab.title=path.split('/').at(-1);ext=path.split('.').at(-1).toLowerCase();editor.dispose();editor=sourceEditor(source,ext);mode='source';typeLabel.textContent=ext.toUpperCase()+' DOCUMENT';tab.togglePreview=['md','markdown'].includes(ext)?toggleMode:undefined;show();wb.render();recent(path);return true;};
   tab.saveAs=()=>enqueueSave(saveAs);
    tab.save=({canSave=()=>true}={})=>enqueueSave(async()=>{if(!canSave())return false;if(fresh)return saveAs();if(!tab.dirty)return true;const value=source.value,r=await api(external?'external':'write',{action:'write',path,data:encode(value),version});version=r.version;saved=value;tab.dirty=source.value!==saved;for(const other of wb.tabs)if(other!==tab&&other.path===tab.path&&!!other.external===!!tab.external)other.acceptSaved?.(version,saved);wb.render();logMessage('已保存 '+tab.title);return true;});
   tab.autoSaveEligible=()=>!fresh;
