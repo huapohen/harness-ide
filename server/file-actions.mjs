@@ -2,7 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import {randomUUID} from 'node:crypto';
-import {safePath,exec} from './workspace.mjs';
+import {exec} from './workspace.mjs';
+import {linkedPath as safePath} from './linked-workspace.mjs';
 export async function fileAction(w,q){
  if(q.action==='import'){
   if(w.host)throw Error('Finder 拖入目前支持本地工作区');

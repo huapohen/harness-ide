@@ -200,3 +200,4 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 /* Match the dark editor's gray background on the activity bar. */
 :root:not([data-theme=light]) .activity{background:var(--bg)}
 :root:not([data-theme=light]) .activity-button.codicon{--activity-glyph-bg:var(--bg)}
+.tree-link-badge{margin-left:auto;padding-left:8px;flex-shrink:0;color:var(--muted);font-size:14px;line-height:22px}

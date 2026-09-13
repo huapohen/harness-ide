@@ -13,7 +13,7 @@ test('Explorer create copy rename rejects overwrite and path escape',async()=>{
  await assert.rejects(fileAction(w,{action:'rename',path:'file.md',destination:'copy.md'}));
  await fileAction(w,{action:'rename',path:'copy.md',destination:'renamed.md'});
  await assert.rejects(fileAction(w,{action:'create',path:'../escape'}));
- await fs.symlink(os.tmpdir(),path.join(root,'outside'));await assert.rejects(fileAction(w,{action:'create',path:'outside/escape'}));
+ const linked=await fs.mkdtemp(path.join(os.tmpdir(),'harness-linked-create-'));try{await fs.symlink(linked,path.join(root,'outside'));await fileAction(w,{action:'create',path:'outside/created'});assert.equal((await fs.stat(path.join(linked,'created'))).isFile(),true);}finally{await fs.rm(linked,{recursive:true});}
  await assert.rejects(fileAction(w,{action:'delete',path:'.'}));
  }finally{await fs.rm(root,{recursive:true,force:true});}
 });

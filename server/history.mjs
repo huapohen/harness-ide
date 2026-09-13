@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import {createHash,randomUUID} from 'node:crypto';
-import {safePath} from './workspace.mjs';
+import {linkedPath as safePath} from './linked-workspace.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 export class LocalHistory{
  constructor(w,directory=process.env.HARNESS_HISTORY_DIR||path.join(os.homedir(),'.hot_plugging','history')){this.w=w;this.directory=directory;}
@@ -14,7 +14,7 @@ export class LocalHistory{
  const blob=path.join(scope,digest+'.blob');try{await fs.writeFile(blob,bytes,{flag:'wx',mode:0o600});}catch(e){if(e.code!=='EEXIST')throw e;}const record={id:randomUUID(),path:p,external,reason,time:Date.now(),hash:digest,size:bytes.length};await fs.writeFile(path.join(scope,record.id+'.json'),JSON.stringify(record),{flag:'wx',mode:0o600});return record;}
  async before(p,external,reason){try{await this.capture(p,external,reason);}catch(e){if(e.code==='ENOENT'||(this.w.host&&/No such file/.test(e.message)))return;throw e;}}
  async captureTree(p,reason='Before Delete'){if(this.w.host){try{await this.capture(p,false,reason);return;}catch(e){if(!/directory/i.test(e.message))throw e;}for(const entry of await this.w.list(p))await this.captureTree(p+'/'+entry.name,reason);return;}
- const full=await safePath(this.w.root,p),stat=await fs.lstat(full);if(stat.isDirectory()){for(const e of await fs.readdir(full,{withFileTypes:true})){if(e.isSymbolicLink())continue;await this.captureTree(p==='.'?e.name:p+'/'+e.name,reason);}}else await this.capture(p,false,reason);}
+ const full=await safePath(this.w.root,p),stat=await fs.lstat(full);if(stat.isSymbolicLink())return;if(stat.isDirectory()){for(const e of await fs.readdir(full,{withFileTypes:true})){if(e.isSymbolicLink())continue;await this.captureTree(p==='.'?e.name:p+'/'+e.name,reason);}}else await this.capture(p,false,reason);}
  async entry(id){return withHistoryLock(this.directory,()=>this.entryUnlocked(id));}
  async entryUnlocked(id){if(!/^[a-f0-9-]{36}$/.test(id))throw Error('无效历史记录');const r=JSON.parse(await fs.readFile(path.join(this.scope,id+'.json'),'utf8'));if(!/^[a-f0-9]{64}$/.test(r.hash))throw Error('历史索引损坏');const bytes=await fs.readFile(path.join(this.scope,r.hash+'.blob'));if(hash(bytes)!==r.hash)throw Error('历史内容校验失败');return {...r,data:bytes.toString('base64')};}
  async restore(id,expected){const r=await this.entry(id);let current=null;try{current=r.external?hash(await fs.readFile(r.path)):(await this.w.read(r.path)).version;}catch(e){if(e.code!=='ENOENT'&&!(this.w.host&&/No such file/.test(e.message)))throw e;}if(current!==expected)throw Error('文件已变化，请刷新后重新恢复');if(current)await this.capture(r.path,r.external,'Before Restore');
