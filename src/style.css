@@ -315,5 +315,5 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 [data-theme="light"] #sidebar-body,[data-theme="light"] .right-explorer{--tree-scroll-visible:rgba(80,90,105,.23)}
 #sidebar-body.scrollbar-near,.right-explorer.scrollbar-near{--tree-scroll-thumb:var(--tree-scroll-visible)}
 #sidebar-body::-webkit-scrollbar,.right-explorer::-webkit-scrollbar{width:8px;height:8px}
-#sidebar-body::-webkit-scrollbar-thumb,#sidebar-body.scrollbar-near::-webkit-scrollbar-thumb,.right-explorer::-webkit-scrollbar-thumb,.right-explorer.scrollbar-near::-webkit-scrollbar-thumb{background:var(--tree-scroll-thumb);border:2px solid transparent;background-clip:padding-box;border-radius:5px}
+#sidebar-body::-webkit-scrollbar-thumb,#sidebar-body.scrollbar-near::-webkit-scrollbar-thumb,.right-explorer::-webkit-scrollbar-thumb,.right-explorer.scrollbar-near::-webkit-scrollbar-thumb{background:var(--tree-scroll-thumb);border:1px solid transparent;background-clip:padding-box;border-radius:5px}
 @media(prefers-reduced-motion:reduce){#sidebar-body,.right-explorer{transition:none}}
