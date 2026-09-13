@@ -260,3 +260,5 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 .right-explorer .tree-root{position:sticky;top:0;z-index:30;background:var(--sidebar)}
 .right-explorer .tree-label{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .right-explorer .tree-root>.tree-label{font-weight:600}
+
+.titlebar>.window-controls-space:last-child{min-width:86px}

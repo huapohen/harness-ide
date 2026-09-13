@@ -32,7 +32,7 @@ export default {id:'settings',requires:['routes'],async activate(ctx){
  ctx.effect(ctx.get('routes').register('settings/layout/read',readLayout));
  ctx.effect(ctx.get('routes').register('settings/layout/write',q=>{
   if(q.autoSave!==undefined&&typeof q.autoSave!=='boolean')throw Error('Invalid Auto Save setting');
-  if(q.secondaryRoot!==undefined&&(typeof q.secondaryRoot!=='string'||!path.isAbsolute(q.secondaryRoot)))throw Error('Invalid right Explorer root');
+  if(q.secondaryRoot!==undefined&&q.secondaryRoot!==null&&(typeof q.secondaryRoot!=='string'||!path.isAbsolute(q.secondaryRoot)))throw Error('Invalid right Explorer root');
   const secondaryWidth=q.secondaryWidth;if(secondaryWidth!==undefined&&(!Number.isFinite(secondaryWidth)||secondaryWidth<180||secondaryWidth>10000))throw Error('Invalid sidebar width');
   if(q.topTabAlignment!==undefined&&!['free','left','right','center'].includes(q.topTabAlignment))throw Error('Invalid top tab alignment');
   const visibility=q.visibility;if(visibility!==undefined&&(!visibility||Object.entries(visibility).some(([k,v])=>!['activity','sidebar','status','titlebar','secondary'].includes(k)||typeof v!=='boolean')))throw Error('Invalid visibility');

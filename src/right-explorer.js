@@ -3,7 +3,7 @@ import {fileIcon} from './file-icons.js';
 import {selectRange} from '../shared/range-selection.js';
 
 export async function rightExplorer(ctx){
- const api=ctx.get('api'),wb=ctx.get('workbench'),host=wb.$('.secondary-content'),heading=wb.$('.secondary-heading');
+ const api=ctx.get('api'),wb=ctx.get('workbench'),host=wb.$('.secondary-content');
  let info,expanded=new Set(),selected='.',anchor='.',multi=new Set(),rootExpanded=true,scrollTop=0,revision=0,disposed=false,painting=false,timer;
  const parent=p=>p.includes('/')?p.slice(0,p.lastIndexOf('/')):'.',join=(p,n)=>p==='.'?n:p+'/'+n;
  const absolute=p=>info.root+(p==='.'?'':'/'+p);
@@ -15,7 +15,8 @@ export async function rightExplorer(ctx){
  host.onpointermove=e=>host.classList.toggle('scrollbar-near',host.getBoundingClientRect().right-e.clientX<22);host.onpointerleave=()=>host.classList.remove('scrollbar-near');
  host.onscroll=()=>{if(painting)return;scrollTop=host.scrollTop;schedule();};
  const choose=async()=>{const root=await wb.run('file.chooseFolder');if(root)await connect(root);};
- const chooseButton=button('⌁','选择右侧根目录',()=>choose());heading.prepend(chooseButton);
+ const closeFolder=async()=>{await persist();clearTimeout(timer);revision++;info=undefined;expanded.clear();multi.clear();scrollTop=0;host.replaceChildren();host.oncontextmenu=null;await api('settings/layout/write',{secondaryRoot:null});};
+ const chooseButton=button('','右侧 File',()=>{const r=chooseButton.getBoundingClientRect();menuAt(r.right-190,r.bottom,[{label:'Open Folder…',run:choose},{label:'Close Folder',disabled:!info,run:closeFolder},null,{label:'Toggle Side Bar',run:()=>wb.run('view.secondary')}]);},'right-file-menu');chooseButton.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';wb.$('.corner-controls').insertBefore(chooseButton,wb.$('.secondary-toggle'));
  ctx.effect(()=>{disposed=true;revision++;clearTimeout(timer);persist();chooseButton.remove();host.onscroll=host.oncontextmenu=host.onpointermove=host.onpointerleave=null;host.replaceChildren();});
  const currentRows=()=>[...host.querySelectorAll('.file-row')];
  function mark(row,p,event={}){
@@ -51,5 +52,5 @@ export async function rightExplorer(ctx){
  }
  async function connect(root){const next=await api('right/explorer',{action:'info',root});await persist();const state=await api('settings/rightExplorer/read',{workspace:{root:next.root}});if(disposed)return;info=next;expanded=new Set(state.expanded);rootExpanded=state.rootExpanded;selected=state.selected||'.';anchor=selected;multi=new Set([selected]);scrollTop=state.scrollTop||0;await api('settings/layout/write',{secondaryRoot:next.root});await render();}
  ctx.effect(wb.command('rightExplorer.openFolder','右侧目录树 · 选择根目录',choose));
- const saved=await api('settings/layout/read');try{await connect(saved.secondaryRoot);}catch(e){host.replaceChildren(el('p','panel-note','右侧目录无法打开：'+e.message),button('Open Folder…','选择右侧根目录',choose));}
+ const saved=await api('settings/layout/read');try{if(saved.secondaryRoot!==null)await connect(saved.secondaryRoot);}catch(e){host.replaceChildren(el('p','panel-note','右侧目录无法打开：'+e.message),button('Open Folder…','选择右侧根目录',choose));}
 }
