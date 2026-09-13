@@ -43,7 +43,7 @@ export const editorOverview=ViewPlugin.fromClass(class {
   // CodeMirror height map accounts for wrapping and offscreen line estimates.
   const y=pos=>Math.max(0,Math.min(h-3,(v.lineBlockAt(pos).top+v.documentPadding.top)/total*h));
   c.fillStyle='#d7a63d';for(const pos of this.matches)c.fillRect(w-12,y(pos),8,3);
-  c.fillStyle='#528bff';c.fillRect(w-16,y(v.state.selection.main.head),16,2);
+
   this.dom.dataset.matches=String(this.matches.length);this.dom.dataset.cursor=String(v.state.selection.main.head);
  }
  destroy(){clearTimeout(this.scrollTimer);cancelAnimationFrame(this.frame);this.abort.abort();this.resize.disconnect();this.dom.remove();}
