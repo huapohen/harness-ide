@@ -1,3 +1,4 @@
+import {markdownInteractions} from '../markdown-links.js';
 import {documentIdentity} from '../../shared/document-identity.js';
 import {inFlight} from '../inflight.js';
 import {autoSave,saveQueue} from '../auto-save.js';
@@ -54,7 +55,7 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
    try{const result=await api('office/preview',{data:resultData(bytes),ext});if(previewDisposed)return;const pdf=Uint8Array.from(atob(result.data),c=>c.charCodeAt(0));url=URL.createObjectURL(new Blob([pdf],{type:'application/pdf'}));const frame=el('iframe');frame.title=tab.title+' · 只读预览';frame.src=url;content.replaceChildren(frame);}catch(error){note.textContent='预览失败：'+error.message;}return;
   }
   if(bytes.slice(0,8192).includes(0))throw Error('此文件是二进制格式，暂不支持编辑');
-  let saved=new TextDecoder().decode(bytes);const source=el('textarea','source-editor');source.value=saved;source.setSelectionRange(0,0);source.spellcheck=false;source.setAttribute('aria-label','文件内容');tab.editor=source;tab.focus=()=>{if(source.isConnected)source.focus();};let editor=sourceEditor(source,/(^|\/)\.ssh\/config$/.test(path)?'sshconfig':ext);tab.dispose=()=>editor.dispose();const preview=el('div','preview');let mode=['md','markdown'].includes(ext)?'source':viewers.has(ext)?'preview':'source';
+  let saved=new TextDecoder().decode(bytes);const source=el('textarea','source-editor');source.value=saved;source.setSelectionRange(0,0);source.spellcheck=false;source.setAttribute('aria-label','文件内容');tab.editor=source;tab.focus=()=>{if(source.isConnected)source.focus();};let editor=sourceEditor(source,/(^|\/)\.ssh\/config$/.test(path)?'sshconfig':ext);const disposeLinks=markdownInteractions({element,source,tab,api,open,onError:logMessage});tab.showLinkHover=()=>disposeLinks.showHover();tab.dispose=()=>{disposeLinks();preview.disposePreviewScrollbar?.();preview.disposePreviewImages?.();editor.dispose();};const preview=el('div','preview');let mode=['md','markdown'].includes(ext)?'source':viewers.has(ext)?'preview':'source';
   const show=()=>{content.replaceChildren();if(mode==='source'){content.append(editor.element);editor.refresh();}else{preview.replaceChildren();viewers.get(ext)(preview,source.value,{path:tab.path,external:tab.external});content.append(preview);}};
   tab.showMode=value=>{if(value==='preview'&&!viewers.has(ext))return;mode=value;show();if(mode==='source')source.focus();};
   const toggleMode=()=>tab.showMode(mode==='source'?'preview':'source');
@@ -84,6 +85,7 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
   'file.chooseFile':['文件 · 选择文件',()=>dialog('open')],
   'file.openFolderDialog':['文件 · 打开文件夹…',async()=>{const path=await dialog('folder');if(path)await window.harnessOpenPath(path,true);}],
   'files.saveAs':['文件 · 另存为…',()=>{const t=wb.current();return t?.kind==='file'?t.saveAs?.():undefined;}],
+  'markdown.showHover':['Markdown · 显示图片链接预览',()=>wb.active()?.showLinkHover?.()],
   'markdown.togglePreview':['Markdown · 切换预览 / 编辑',()=>wb.active()?.togglePreview?.()],
   'file.open':['文件 · 从 Explorer 打开',()=>open]
  };

@@ -322,3 +322,5 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 .markdown-scroll{--preview-scroll-thumb:transparent;--scrollbar-thumb:var(--preview-scroll-thumb);--scrollbar-hover:color-mix(in srgb,var(--selected,#414650) 75%,transparent);scrollbar-color:auto;transition:--preview-scroll-thumb .25s ease}
 .markdown-scroll.scrollbar-visible{--preview-scroll-thumb:color-mix(in srgb,var(--selected,#414650) 75%,transparent)}
 @media(prefers-reduced-motion:reduce){.markdown-scroll{transition:none}}
+
+.markdown-image-hover{position:fixed;z-index:3000;padding:8px;background:var(--sidebar);border:1px solid var(--border);border-radius:6px;box-shadow:0 6px 20px var(--shadow);pointer-events:none;max-width:330px;max-height:250px}.markdown-image-hover img{display:block;max-width:310px;max-height:230px;object-fit:contain}
