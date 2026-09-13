@@ -8,6 +8,7 @@ test('Git scan depth and independent directory, branch creation and switching',a
  assert.equal((await route({action:'repositories',sourceRoot:repo,depth:0})).repositories.length,1);assert.equal(primary.root,tmp);
  await route({action:'createBranch',sourceRoot:repo,branch:'feature/example'});assert.equal((await route({action:'status',sourceRoot:repo})).branch,'feature/example');
  await route({action:'switch',sourceRoot:repo,branch:'main'});assert.ok((await route({action:'branches',sourceRoot:repo})).branches.includes('feature/example'));
+ const pending=route({action:'repositories',sourceRoot:repo,channel:'cancel-test',depth:2});await route({action:'cancel',channel:'cancel-test'});await assert.rejects(pending);
  await assert.rejects(route({action:'createBranch',sourceRoot:repo,branch:'--bad'}),/Invalid/);await assert.rejects(route({action:'repositories',depth:-1}),/Depth/);
  }finally{await fs.rm(tmp,{recursive:true,force:true});}
 });

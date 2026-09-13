@@ -10,7 +10,7 @@ export function workspaceSearch(w,q){
  const cancel=()=>finish(null,{matches:[],cancelled:true});
  const timer=setTimeout(()=>finish(Error('搜索超过 30 秒，请缩小范围或简化正则表达式')),30000);
  if(key)active.set(key,cancel);
- worker.on('message',r=>{if(r.pid){pid=r.pid;if(settled)try{process.kill(pid);}catch{}return;}finish(r.error?Error(r.error):null,r);});
+ worker.on('message',r=>{if(Object.hasOwn(r,'pid')){pid=r.pid;if(settled&&pid)try{process.kill(pid);}catch{}return;}finish(r.error?Error(r.error):null,r);});
  worker.once('error',e=>finish(e));worker.once('exit',code=>{if(!settled)finish(Error('搜索进程意外退出 ('+code+')'));});
  });
 }
