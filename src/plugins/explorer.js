@@ -68,6 +68,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
   }
  }
  ctx.effect(wb.panel('explorer','Explorer','▱',async container=>{
+  container.onclick=e=>{if(e.target.closest('.file-row,.tree-root,button,input,textarea,a'))return;multi.clear();selected='.';selectionAnchor=null;selectedDirectory=true;for(const row of container.querySelectorAll('.file-row')){row.classList.remove('selected');row.setAttribute('aria-selected','false');}if(container.contains(document.activeElement))document.activeElement.blur();const selection=window.getSelection();if(selection?.anchorNode&&container.contains(selection.anchorNode))selection.removeAllRanges();};
   container.oncontextmenu=e=>context(e);const root=button('',info.name,async()=>{selected='.';selectionAnchor=null;selectedDirectory=true;rootExpanded=!rootExpanded;await refresh();},'tree-root');root.setAttribute('aria-expanded',String(rootExpanded));root.append(el('span','tree-chevron codicon-'+(rootExpanded?'chevron-down':'chevron-right')),el('span','',info.name));const rows=el('div','tree-root-children');rows.setAttribute('role','tree');rows.setAttribute('aria-label','文件资源管理器');container.append(root,rows);
   if(rootExpanded)try{await tree(rows);}catch(e){rows.append(el('p','panel-note',e.message));}
  }));

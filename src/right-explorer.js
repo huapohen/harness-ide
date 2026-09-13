@@ -23,6 +23,7 @@ export async function rightExplorer(ctx){
  const schedule=()=>{clearTimeout(timer);timer=setTimeout(persist,150);};
  host.classList.add('right-explorer');host.setAttribute('aria-label','右侧文件资源管理器');
  host.onpointermove=e=>host.classList.toggle('scrollbar-near',host.getBoundingClientRect().right-e.clientX<22);host.onpointerleave=()=>host.classList.remove('scrollbar-near');
+ host.onclick=e=>{if(e.target.closest('.file-row,.tree-root,button,input,textarea,a'))return;multi.clear();selected=anchor='.';for(const row of currentRows()){row.classList.remove('selected');row.setAttribute('aria-selected','false');}if(host.contains(document.activeElement))document.activeElement.blur();const selection=window.getSelection();if(selection?.anchorNode&&host.contains(selection.anchorNode))selection.removeAllRanges();schedule();};
  host.onscroll=()=>{if(painting)return;scrollTop=host.scrollTop;schedule();};
  const choose=async()=>{const root=await wb.run('file.chooseFolder');if(root)await connect(root);};
  const closeFolder=async()=>{contextState.invalidate();revision++;const valid=contextState.capture();await persist();if(!valid()||disposed)return;clearTimeout(timer);revision++;info=undefined;clipboard=null;expanded.clear();multi.clear();selected=anchor='.';scrollTop=0;painting=false;host.replaceChildren();host.oncontextmenu=e=>emptyContext(e);await api('settings/layout/write',{secondaryRoot:null});};
@@ -37,7 +38,7 @@ export async function rightExplorer(ctx){
  {label:'Save All',run:async()=>{for(const t of rightTabs())if(t.dirty)await t.save?.();}},null,
  {label:'Auto Save',checked:rightAutoSave,run:async()=>{const next=!rightAutoSave;await api('settings/layout/write',{rightAutoSave:next});rightAutoSave=next;automatic.set(next);}},null,
  {label:'Close Folder',disabled:!info,run:closeFolder},{label:'Toggle Side Bar',run:()=>wb.run('view.secondary')}]);},'right-file-menu');chooseButton.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3 6h7l2 2h9v12H3zM3 6V4h7l2 2h8v2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';wb.$('.corner-controls').insertBefore(chooseButton,wb.$('.secondary-toggle'));
- ctx.effect(()=>{disposed=true;contextState.invalidate();revision++;clearTimeout(timer);persist();chooseButton.remove();host.onscroll=host.oncontextmenu=host.onpointermove=host.onpointerleave=null;host.replaceChildren();});
+ ctx.effect(()=>{disposed=true;contextState.invalidate();revision++;clearTimeout(timer);persist();chooseButton.remove();host.onclick=host.onscroll=host.oncontextmenu=host.onpointermove=host.onpointerleave=null;host.replaceChildren();});
  const currentRows=()=>[...host.querySelectorAll('.file-row')];
  function mark(row,p,event={}){
   if(event.shiftKey){multi=selectRange(currentRows().map(r=>r.dataset.path),anchor,p,multi,!!event.metaKey);}else{anchor=p;if(event.metaKey){if(multi.has(p))multi.delete(p);else multi.add(p);}else multi=new Set([p]);}

@@ -265,3 +265,8 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 
 /* Tree selection uses its row background, without the WebKit focus ring. */
 .file-row:focus,.file-row:focus-visible,.tree-root:focus,.tree-root:focus-visible{outline:none;box-shadow:none}
+
+/* Match the subdued Explorer selection in the reference. */
+.file-row.selected,.tree-folder.selected{background:#2c313a}
+[data-theme="light"] .file-row.selected{background:#e4e6e9}
+.tree-root{user-select:none;-webkit-user-select:none}
