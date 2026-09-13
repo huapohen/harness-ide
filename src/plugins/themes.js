@@ -1,7 +1,7 @@
 export default {id:'themes',requires:['workbench'],activate(ctx,config){
  const wb=ctx.get('workbench');const themes={
- 'one-dark-pro':{label:'One Dark Pro',terminal:{background:'#282c34',foreground:'#abb2bf',cursor:'#abb2bf',black:'#282c34',red:'#e06c75',green:'#98c379',yellow:'#e5c07b',blue:'#61afef',magenta:'#c678dd',cyan:'#56b6c2',white:'#abb2bf'}},
- light:{label:'Light',terminal:{background:'#ffffff',foreground:'#383a42',cursor:'#727986',black:'#383a42',red:'#e45649',green:'#50a14f',yellow:'#986801',blue:'#4078f2',magenta:'#a626a4',cyan:'#0184bc',white:'#fafafa'}}};
+ 'one-dark-pro':{label:'One Dark Pro',terminal:{background:'#282c34',foreground:'#abb2bf',cursor:'#c678dd',black:'#282c34',red:'#e06c75',green:'#98c379',yellow:'#e5c07b',blue:'#61afef',magenta:'#c678dd',cyan:'#56b6c2',white:'#abb2bf'}},
+ light:{label:'Light',terminal:{background:'#ffffff',foreground:'#383a42',cursor:'#c678dd',black:'#383a42',red:'#e45649',green:'#50a14f',yellow:'#986801',blue:'#4078f2',magenta:'#a626a4',cyan:'#0184bc',white:'#fafafa'}}};
  let current=localStorage.getItem('harness-theme')||config.default||'one-dark-pro';if(!themes[current])current='one-dark-pro';
  const apply=()=>{document.documentElement.dataset.theme=current;window.webkit?.messageHandlers.windowChrome?.postMessage({action:'theme',light:current==='light'});localStorage.setItem('harness-theme',current);wb.$('#theme-button').textContent=themes[current].label;ctx.emit('theme.changed',themes[current]);};
  ctx.provide('theme',{current:()=>themes[current],id:()=>current,list:()=>Object.entries(themes).map(([id,t])=>({id,label:t.label})),select:id=>{if(!themes[id])return;current=id;apply();}});ctx.effect(wb.command('theme.toggle','主题 · One Dark Pro / Light',()=>{current=current==='light'?'one-dark-pro':'light';apply();}));apply();ctx.effect(()=>delete document.documentElement.dataset.theme);

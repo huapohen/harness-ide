@@ -10,10 +10,10 @@ export default {id:'terminal',requires:['workbench','terminal.connect','theme'],
  async function create(splitTarget=null,direction=null,restore=null){
   ready ||= import('ghostty-web').then(async mod=>{const ghostty=await mod.Ghostty.load(assetURL('/ghostty-vt.wasm'));return {...mod,ghostty};});const {Terminal,FitAddon,ghostty}=await ready;
   const element=el('section','terminal-pane tab-content');const mount=el('div','terminal-mount');element.append(mount);
-  const term=new Terminal({ghostty,cols:restore?.cols||100,rows:restore?.rows||28,fontSize:fonts.terminalSize,fontFamily:fonts.family+', monospace',cursorBlink:false,theme:ctx.get('theme').current().terminal,scrollback:5000});
+  const term=new Terminal({ghostty,cols:restore?.cols||100,rows:restore?.rows||28,fontSize:fonts.terminalSize,fontFamily:fonts.family+', monospace',cursorBlink:false,theme:{...ctx.get('theme').current().terminal,cursor:fonts.cursorColor},scrollback:5000});
   // Ghostty Web's deferred focus steals focus from inline tab rename inputs.
   term.focus=()=>mount.focus({preventScroll:true});
-  const updateFont=()=>{term.options.fontSize=fonts.terminalSize;term.options.fontFamily=fonts.family+', monospace';tab.resize();};window.addEventListener('content-font-changed',updateFont);
+  const updateFont=()=>{term.options.fontSize=fonts.terminalSize;term.options.fontFamily=fonts.family+', monospace';tab.setTheme?.(ctx.get('theme').current());tab.resize();};window.addEventListener('content-font-changed',updateFont);
   const fit=new FitAddon();term.loadAddon(fit);const socket=ctx.get('terminal.connect')(restore?.resumeId),pending=new Map();const number=++count;count=Math.max(count,Number(restore?.title?.match(/^t(\d+)$/)?.[1])||0);let disposed=false,exited=false,disposeMouse=()=>{};
   const tab={id:restore?.id||'terminal:'+crypto.randomUUID(),title:restore?.title||`t${number}`,kind:'terminal',icon:'›_',element,terminal:term,busy:true,
    resize:()=>{if(!element.hidden){try{fitVisibleTerminal(term,fit,mount);}catch{}}},focus:()=>term.focus(),
@@ -45,7 +45,7 @@ export default {id:'terminal',requires:['workbench','terminal.connect','theme'],
    const dismiss=event=>{if(!menu.contains(event.target)){menu.remove();document.removeEventListener('pointerdown',dismiss);}};document.addEventListener('pointerdown',dismiss);
   });
   installQuietCursor(term.renderer);
-  const setTheme=installThemeAdapter(term,ctx.get('theme').current().terminal);tab.setTheme=theme=>setTheme(theme.terminal);requestAnimationFrame(()=>{tab.resize();term.focus();});return tab;
+  const setTheme=installThemeAdapter(term,ctx.get('theme').current().terminal);tab.setTheme=theme=>setTheme({...theme.terminal,cursor:fonts.cursorColor});requestAnimationFrame(()=>{tab.resize();term.focus();});return tab;
  }
  for(const [id,direction]of [['terminal.splitVertical','vertical'],['terminal.splitHorizontal','horizontal']])ctx.effect(wb.command(id,direction==='vertical'?'终端 · 左右切分':'终端 · 上下切分',()=>{const t=wb.current();if(t?.kind!=='terminal'){logMessage('请先选择一个终端');return;}return create(t,direction);}));
  ctx.effect(wb.command('terminal.restore','Terminal restore',state=>create(null,null,state)));

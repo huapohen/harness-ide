@@ -1,6 +1,6 @@
-export const fonts={size:13,terminalSize:13,sidebarSize:13,family:'Menlo',treeColor:'#abb2bf',markdownColor:'#b0b0b0',headingColor:'#8abebf'};
+export const fonts={size:13,terminalSize:13,sidebarSize:13,family:'Menlo',cursorColor:'#c678dd',treeColor:'#abb2bf',markdownColor:'#b0b0b0',headingColor:'#8abebf'};
 export function applyFonts(value={}){
- for(const key of ['treeColor','markdownColor','headingColor']){if(/^#[0-9a-f]{6}$/i.test(value[key]||''))fonts[key]=value[key];document.documentElement.style.setProperty('--'+key,fonts[key]);}
+ for(const key of ['treeColor','markdownColor','headingColor','cursorColor']){if(/^#[0-9a-f]{6}$/i.test(value[key]||''))fonts[key]=value[key];document.documentElement.style.setProperty('--'+key,fonts[key]);}
  if(Number.isFinite(value.terminalSize)&&value.terminalSize>=8&&value.terminalSize<=40)fonts.terminalSize=value.terminalSize;
  if(Number.isFinite(value.size)&&value.size>=8&&value.size<=40)fonts.size=value.size;
  if(Number.isFinite(value.sidebarSize)&&value.sidebarSize>=8&&value.sidebarSize<=40)fonts.sidebarSize=value.sidebarSize;
