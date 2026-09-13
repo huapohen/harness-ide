@@ -1,10 +1,12 @@
+import {previewScrollbar} from '../preview-scrollbar.js';
 import {highlightCodeBlocks} from '../source-editor.js';
 import {marked} from 'marked';
 import DOMPurify from 'dompurify';
 export default {id:'markdown',requires:['documents'],activate(ctx){ctx.effect(ctx.get('documents').register('md',(container,text)=>{
+ container.disposePreviewScrollbar?.();
  const wasOpen=container.dataset.tocOpen==='true';
  container.classList.remove('markdown');container.classList.add('markdown-preview');container.replaceChildren();
- const scroll=document.createElement('div');scroll.className='markdown-scroll';
+ const scroll=document.createElement('div');scroll.className='markdown-scroll';container.disposePreviewScrollbar=previewScrollbar(scroll);
  const article=document.createElement('article');article.className='markdown';article.innerHTML=DOMPurify.sanitize(marked.parse(text));
  highlightCodeBlocks(article).catch(console.error);
  article.querySelectorAll('a').forEach(a=>{a.onclick=e=>e.preventDefault();a.title='请在浏览器中打开链接';});scroll.append(article);

@@ -318,5 +318,7 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 #sidebar-body::-webkit-scrollbar-thumb,#sidebar-body.scrollbar-near::-webkit-scrollbar-thumb,.right-explorer::-webkit-scrollbar-thumb,.right-explorer.scrollbar-near::-webkit-scrollbar-thumb{background:var(--tree-scroll-thumb);border:1px solid transparent;background-clip:padding-box;border-radius:5px}
 @media(prefers-reduced-motion:reduce){#sidebar-body,.right-explorer{transition:none}}
 /* Markdown preview scroll thumbs remain quiet against either theme. */
-.markdown-scroll{--scrollbar-thumb:rgba(145,153,166,.16);--scrollbar-hover:rgba(145,153,166,.24)}
-[data-theme="light"] .markdown-scroll{--scrollbar-thumb:rgba(80,90,105,.14);--scrollbar-hover:rgba(80,90,105,.22)}
+@property --preview-scroll-thumb{syntax:'<color>';inherits:true;initial-value:transparent}
+.markdown-scroll{--preview-scroll-thumb:transparent;--scrollbar-thumb:var(--preview-scroll-thumb);--scrollbar-hover:color-mix(in srgb,var(--selected,#414650) 75%,transparent);scrollbar-color:auto;transition:--preview-scroll-thumb .25s ease}
+.markdown-scroll.scrollbar-visible{--preview-scroll-thumb:color-mix(in srgb,var(--selected,#414650) 75%,transparent)}
+@media(prefers-reduced-motion:reduce){.markdown-scroll{transition:none}}
