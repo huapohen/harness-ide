@@ -200,7 +200,7 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 /* Match the dark editor's gray background on the activity bar. */
 :root:not([data-theme=light]) .activity{background:var(--bg)}
 :root:not([data-theme=light]) .activity-button.codicon{--activity-glyph-bg:var(--bg)}
-.tree-link-badge{margin-left:auto;padding-left:8px;flex-shrink:0;align-self:center;color:var(--muted);opacity:.7;font-size:9px;font-weight:400;line-height:1}
+.tree-link-badge{margin-left:0;padding-left:0;flex-shrink:0;align-self:center;color:var(--muted);opacity:.7;font-size:9px;font-weight:400;line-height:1}
 
 /* Reserve the scrollbar lane before expansion; do not anchor scrolling to newly revealed children. */
 #sidebar-body{overflow-y:scroll;overflow-anchor:none}
@@ -212,3 +212,23 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 .top-tabs{position:relative;display:block}.top-tabs>.tab{position:absolute;top:0;width:max-content;max-width:240px;margin:2px 0;transition:left .12s ease-out}.explorer-rename{width:100%;min-width:0;height:21px;padding:0 3px;border:1px solid var(--accent);border-radius:2px;background:var(--bg);color:var(--fg);outline:none;font:inherit}.file-row:has(.explorer-rename) .tree-label{flex:1;min-width:0;overflow:visible}
 
 .corner-controls{position:absolute;right:8px;top:2px;z-index:80;display:flex;align-items:center;height:24px;gap:2px}.corner-controls button{opacity:0;transition:opacity .12s;width:24px;height:24px;padding:3px;display:flex;align-items:center;justify-content:center;color:var(--muted);background:transparent!important}.corner-controls button:hover,.corner-controls button:focus-visible{opacity:1}.corner-controls .top-tab-alignment{font-size:18px}.titlebar>.window-controls-space:last-child{min-width:60px}
+
+/* Compact source control panel */
+.git-panel{padding:10px 12px;min-width:0}
+.git-repository{width:100%;min-width:0;height:30px;padding:0 8px;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:4px;font:inherit;font-size:12px;text-overflow:ellipsis}
+.git-repo-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500;line-height:28px}
+.git-actions{gap:8px;padding:4px 0 8px;min-width:0}
+.git-actions>.git-current-branch{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+.git-actions button{width:24px;height:24px;padding:2px;font-size:16px;color:var(--muted)}
+.git-composer{display:grid;gap:8px;margin-bottom:16px}
+.git-composer .git-message{min-width:0;height:32px;padding:7px 9px;font:inherit;font-size:12px;box-sizing:border-box}
+.git-commit{width:100%;height:30px;padding:0 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg);font-size:12px}
+.git-commit:disabled{opacity:.45;cursor:default}
+.git-group{padding:0 0 8px}
+.git-group>summary{padding:5px 0;line-height:20px;font-size:11px;color:var(--muted);cursor:pointer}
+.git-group-title{font-weight:500}
+.git-count{float:right;min-width:18px;line-height:18px;margin-top:1px;text-align:center;border-radius:4px;background:var(--bg);font-size:10px}
+.git-file{gap:6px;padding:0 0 0 9px;height:28px;font-size:12px;overflow:hidden}
+.git-file>button:first-child{padding:0;height:28px;white-space:nowrap;font-size:12px}
+.git-file>.git-status{font-size:10px;color:var(--muted);width:12px;text-align:center;flex-shrink:0}
+.git-file>button:last-child{padding:0;width:22px;height:22px;color:var(--muted);font-size:14px;flex-shrink:0}
