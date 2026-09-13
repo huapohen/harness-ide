@@ -50,7 +50,7 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
   }
   if(bytes.slice(0,8192).includes(0))throw Error('此文件是二进制格式，暂不支持编辑');
   let saved=new TextDecoder().decode(bytes);const source=el('textarea','source-editor');source.value=saved;source.setSelectionRange(0,0);source.spellcheck=false;source.setAttribute('aria-label','文件内容');tab.editor=source;tab.focus=()=>{if(source.isConnected)source.focus();};let editor=sourceEditor(source,/(^|\/)\.ssh\/config$/.test(path)?'sshconfig':ext);tab.dispose=()=>editor.dispose();const preview=el('div','preview');let mode=['md','markdown'].includes(ext)?'source':viewers.has(ext)?'preview':'source';
-  const show=()=>{content.replaceChildren();if(mode==='source'){content.append(editor.element);editor.refresh();}else{preview.replaceChildren();viewers.get(ext)(preview,source.value);content.append(preview);}};
+  const show=()=>{content.replaceChildren();if(mode==='source'){content.append(editor.element);editor.refresh();}else{preview.replaceChildren();viewers.get(ext)(preview,source.value,{path:tab.path,external:tab.external});content.append(preview);}};
   tab.showMode=value=>{if(value==='preview'&&!viewers.has(ext))return;mode=value;show();if(mode==='source')source.focus();};
   const toggleMode=()=>tab.showMode(mode==='source'?'preview':'source');
   tab.canPreview=()=>viewers.has(ext);tab.getMode=()=>mode;const typeLabel=el('span','document-type',ext.toUpperCase()+' DOCUMENT');if(['md','markdown'].includes(ext))tab.togglePreview=toggleMode;
