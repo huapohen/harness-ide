@@ -270,3 +270,6 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 .file-row.selected,.tree-folder.selected{background:#2c313a}
 [data-theme="light"] .file-row.selected{background:#e4e6e9}
 .tree-root{user-select:none;-webkit-user-select:none}
+
+.tab-actions>button{opacity:0;transition:opacity .12s}
+.tab-actions>button:hover,.tab-actions>button:focus-visible{opacity:1}
