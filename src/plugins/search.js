@@ -1,3 +1,4 @@
+import {inputDragSelection} from '../input-drag-selection.js';
 import {addSearchFolder} from '../search-folder.js';
 import {el,button,logMessage} from '../ui.js';
 export default {id:'search',requires:['api','workbench','workspace'],activate(ctx){
@@ -6,6 +7,7 @@ export default {id:'search',requires:['api','workbench','workspace'],activate(ct
  query.placeholder='Search';query.setAttribute('aria-label','Search workspace');include.placeholder='e.g. *.ts, src/**';exclude.placeholder='e.g. *.log, build/**';
  const options={caseSensitive:false,word:false,regex:false};
  const replacement=el('input'),replaceRow=el('div','search-replace-row'),fields=el('div','search-fields');let preserveCase=false;
+ for(const input of [query,include,exclude,replacement])inputDragSelection(input);
  replacement.placeholder='Replace';replacement.setAttribute('aria-label','Replace workspace');replaceRow.hidden=true;replaceRow.id='workspace-replace-row';
  const toggle=button('','Toggle Replace',()=>{replaceRow.hidden=!replaceRow.hidden;toggle.classList.toggle('codicon-chevron-down',!replaceRow.hidden);toggle.classList.toggle('codicon-chevron-right',replaceRow.hidden);toggle.setAttribute('aria-expanded',String(!replaceRow.hidden));},'search-replace-toggle codicon-chevron-right');toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',replaceRow.id);
  const preserve=button('AB','Preserve Case',()=>{preserveCase=!preserveCase;preserve.classList.toggle('on',preserveCase);preserve.setAttribute('aria-pressed',String(preserveCase));});
