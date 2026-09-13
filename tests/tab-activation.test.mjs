@@ -8,3 +8,7 @@ test('tap activates without click, normal click is deduplicated; drag and contro
  node.onpointerdown({...e,target:{closest:()=>({})}});node.onpointerup(e);assert.equal(calls,1);
  node.onclick({...e,detail:0});assert.equal(calls,2);
 });
+test('another pointer cannot finish an active tab drag',()=>{
+ const node={};let drops=0;installTabActivation(node,()=>{}, {drop:()=>drops++});const e={button:0,pointerId:1,clientX:0,clientY:0,target:{closest:()=>null}};
+ node.onpointerdown(e);node.onpointermove({...e,clientX:20});node.onpointerup({...e,pointerId:2});assert.equal(drops,0);node.onpointerup(e);assert.equal(drops,1);
+});
