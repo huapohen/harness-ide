@@ -4,7 +4,7 @@ test('tap activates without click, normal click is deduplicated; drag and contro
  const e={button:0,pointerId:1,clientX:10,clientY:10,detail:1,target:{closest:()=>null}};
  node.onpointerdown(e);node.onpointerup(e);assert.equal(calls,1);node.onclick(e);assert.equal(calls,1);
  node.onpointerdown(e);node.onpointermove({...e,clientX:30});node.onpointerup({...e,clientX:30});assert.equal(calls,1);
- node.onpointerdown(e);events.dragstart();node.onpointerup(e);assert.equal(calls,1);
+ node.onpointerdown(e);node.onpointercancel();node.onpointerup(e);assert.equal(calls,1);
  node.onpointerdown({...e,target:{closest:()=>({})}});node.onpointerup(e);assert.equal(calls,1);
  node.onclick({...e,detail:0});assert.equal(calls,2);
 });

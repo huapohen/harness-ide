@@ -51,12 +51,12 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
    drawArrow();if(entry.directory)row.append(arrow);
    if(!entry.directory){const icon=fileIcon(entry.name),glyph=el('span','tree-file-icon',icon.character);glyph.setAttribute('aria-hidden','true');glyph.style.setProperty('--file-icon-dark',icon.dark);glyph.style.setProperty('--file-icon-light',icon.light);row.append(glyph);}
    row.append(el('span','tree-label',entry.name));if(entry.symbolicLink){const badge=el('span','tree-link-badge','↪');badge.setAttribute('aria-label',entry.broken?'Broken symbolic link':'Symbolic link');badge.title=entry.broken?'Broken symbolic link':'Symbolic link';row.append(badge);row.title=p+(entry.broken?' (Broken symbolic link)':' (Symbolic link)');}row.oncontextmenu=e=>{if(!multi.has(p))markSelection(row,p,entry.directory);context(e,p,entry.directory);};
-   row.onkeydown=e=>{const run=fn=>{e.preventDefault();Promise.resolve().then(fn).catch(logMessage);};if(e.key==='F2')run(()=>rename(p));if(e.key==='Delete')run(()=>remove(p));
+   row.onkeydown=e=>{const run=fn=>{e.preventDefault();Promise.resolve().then(fn).catch(logMessage);};if(e.key==='F2'||e.key==='Enter')run(()=>rename(p));if(e.key==='Delete')run(()=>remove(p));
     if(e.key==='ArrowRight'&&entry.directory)run(async()=>{if(!expanded.has(p))await toggle();else children.querySelector('.file-row')?.focus();});
     if(e.key==='ArrowLeft')run(async()=>{if(entry.directory&&expanded.has(p))await toggle();else container.previousElementSibling?.focus();});
     if(e.key==='ArrowDown'||e.key==='ArrowUp')run(()=>{const rows=[...wb.$('#sidebar-body').querySelectorAll('.file-row')],i=rows.indexOf(row);rows[i+(e.key==='ArrowDown'?1:-1)]?.focus();});
    };
-   row.onfocus=()=>{selected=p;selectedDirectory=entry.directory;};if(entry.directory){const branch=el('div','tree-branch');row.classList.add('tree-folder');row.style.top=((depth+1)*22)+'px';branch.append(row,children);container.append(branch);}else container.append(row,children);if(entry.directory&&expanded.has(p))try{await tree(children,p,depth+1);}catch(error){children.append(el('p','panel-note','无法展开：'+error.message));}
+   row.ondblclick=e=>{e.preventDefault();e.stopPropagation();rename(p).catch(logMessage);};row.onfocus=()=>{selected=p;selectedDirectory=entry.directory;};if(entry.directory){const branch=el('div','tree-branch');row.classList.add('tree-folder');row.style.top=((depth+1)*22)+'px';branch.append(row,children);container.append(branch);}else container.append(row,children);if(entry.directory&&expanded.has(p))try{await tree(children,p,depth+1);}catch(error){children.append(el('p','panel-note','无法展开：'+error.message));}
   }
  }
  ctx.effect(wb.panel('explorer','Explorer','▱',async container=>{
