@@ -8,6 +8,9 @@ import {workspaceSearch} from '../search.mjs';
 import {externalFile} from '../external-files.mjs';
 import {fileAction} from '../file-actions.mjs';
 export default {id:'filesystem',requires:['routes','workspace'],activate(ctx){
+ const leases=globalThis[Symbol.for('harness.backendReleaseLeases')] ||= new Map();
+ const release=import.meta.url.match(/hot-updates\/([a-f0-9]{20})\//)?.[1];
+ if(release){leases.set(release,(leases.get(release)||0)+1);ctx.effect(()=>{const n=leases.get(release)-1;if(n)leases.set(release,n);else leases.delete(release);});}
  const w=linkedWorkspace(ctx.get('workspace')),routes=ctx.get('routes'),history=new LocalHistory(w);
  const read=async q=>{const result=await w.read(q.path);await history.capture(q.path,false,'Opened',result.data);return result;};
  const write=async q=>{await history.before(q.path,false,'Before Save');const result=await w.write(q.path,q.data,q.version);await history.capture(q.path,false,'File Saved',q.data);return result;};
