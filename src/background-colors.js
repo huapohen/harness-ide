@@ -1,5 +1,5 @@
 export const backgroundDefaults={
- 'one-dark-pro':{left:'#2b3038',right:'#2b3038',editor:'#282c34',terminal:'#282c34'},
+ 'one-dark-pro':{left:'#252930',right:'#252930',editor:'#282c34',terminal:'#282c34'},
  light:{left:'#f5f6f8',right:'#f5f6f8',editor:'#ffffff',terminal:'#ffffff'}
 };
 export function backgroundColors(theme,storage){
