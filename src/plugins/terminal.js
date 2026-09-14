@@ -1,3 +1,4 @@
+import {installSelectionBoundary} from '../terminal-selection.js';
 import {alignTerminalPixels} from '../terminal-pixel-align.js';
 import {installQuietCursor} from '../terminal-cursor.js';
 import {fonts} from '../font-settings.js';
@@ -56,7 +57,7 @@ export default {id:'terminal',requires:['workbench','terminal.connect','theme'],
    document.body.append(menu);menu.style.left=Math.min(e.clientX,innerWidth-menu.offsetWidth-8)+'px';menu.style.top=Math.min(e.clientY,innerHeight-menu.offsetHeight-8)+'px';
    const dismiss=event=>{if(!menu.contains(event.target)){menu.remove();document.removeEventListener('pointerdown',dismiss);}};document.addEventListener('pointerdown',dismiss);
   });
-  installQuietCursor(term.renderer);
+  installSelectionBoundary(term);installQuietCursor(term.renderer);
   const setTheme=installThemeAdapter(term,ctx.get('theme').current().terminal);tab.setTheme=theme=>setTheme({...theme.terminal,cursor:fonts.cursorColor});requestAnimationFrame(()=>{tab.resize();term.focus();});return tab;
  }
  for(const [id,direction]of [['terminal.splitVertical','vertical'],['terminal.splitHorizontal','horizontal']])ctx.effect(wb.command(id,direction==='vertical'?'终端 · 左右切分':'终端 · 上下切分',()=>{const t=wb.current();if(t?.kind!=='terminal'){logMessage('请先选择一个终端');return;}return create(t,direction);}));
