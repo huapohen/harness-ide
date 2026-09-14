@@ -1,3 +1,4 @@
+import {installTreeSticky,updateTreeSticky} from '../explorer-sticky.js';
 import {reusableRows,directoryContainer,stageRow,commitRows} from '../explorer-local-refresh.js';
 import {dragSource,dropTarget} from '../explorer-drag.js';
 import {inlineCreate} from '../explorer-inline.js';
@@ -18,7 +19,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
  ctx.effect(()=>delete window.harnessDropFiles);
  const manage=async(action,path,extra={})=>{const result=await api('manage',{action,path,...extra});if(['create','rename','move','copy','delete','symlink'].includes(action))ctx.emit('explorer.mutated',{source:'left',action,path,destination:extra.destination,root:info.root,destinationRoot:extra.destinationRoot||info.root,host:info.host});return result;};
  ctx.on('explorer.mutated',e=>{if(e.source!=='left'&&wb.$('.sidebar').dataset.panel==='explorer')(e.action==='move'?localRefresh([...(e.root===info.root?[parent(e.path)]:[]),...(e.destinationRoot===info.root?[parent(e.destination)]:[])]):refresh()).catch(logMessage);});
- async function localRefresh(paths){for(const p of new Set(paths)){const found=directoryContainer(wb.$('#sidebar-body'),p);if(!found?.container)continue;const pending=el('div');await tree(pending,p,found.depth,reusableRows(found.container));commitRows(found.container,pending);}}
+ async function localRefresh(paths){for(const p of new Set(paths)){const found=directoryContainer(wb.$('#sidebar-body'),p);if(!found?.container)continue;const pending=el('div');await tree(pending,p,found.depth,reusableRows(found.container));commitRows(found.container,pending);}updateTreeSticky(wb.$('#sidebar-body'));}
  const refresh=async()=>{await persistTree();await wb.showPanel('explorer',{preserve:true});};
  async function newFile(name='',dir=selectedDirectory?selected:parent(selected),directory=false){rootExpanded=true;let ancestor=dir;while(ancestor!=='.'){expanded.add(ancestor);ancestor=parent(ancestor);}await refresh();inlineCreate(wb.$('#sidebar-body'),dir,directory,name,async name=>{const p=join(dir,name);await manage('create',p,{directory});await refresh();if(!directory)await wb.run('file.open')(p);});}
 
@@ -56,8 +57,8 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
   const entries=await api('list',{path:rel});entries.sort((a,b)=>Number(b.directory)-Number(a.directory)||a.name.localeCompare(b.name));
   for(const entry of entries){
    const p=join(rel,entry.name);if(reuse.has(p)){stageRow(container,reuse.get(p));continue;}const row=el('div','file-row');row.tabIndex=0;row.title=p;
-   row.dataset.path=p;row.dataset.dropDirectory=entry.directory?p:parent(p);row.setAttribute('role','treeitem');row.setAttribute('aria-level',String(depth+1));row.setAttribute('aria-selected',String(multi.has(p)));row.classList.toggle('selected',multi.has(p));row.style.paddingLeft=(18+depth*10)+'px';
-   const arrow=el('span','tree-chevron'),children=el('div','tree-children');children.setAttribute('role','group');children.style.setProperty('--guide-left',(26+depth*10)+'px');
+   row.dataset.path=p;row.dataset.dropDirectory=entry.directory?p:parent(p);row.setAttribute('role','treeitem');row.setAttribute('aria-level',String(depth+1));row.setAttribute('aria-selected',String(multi.has(p)));row.classList.toggle('selected',multi.has(p));row.style.paddingLeft=(12+depth*8)+'px';
+   const arrow=el('span','tree-chevron'),children=el('div','tree-children');children.setAttribute('role','group');children.style.setProperty('--guide-left',(20+depth*8)+'px');
    const drawArrow=()=>{arrow.className='tree-chevron'+(entry.directory?' codicon-'+(expanded.has(p)?'chevron-down':'chevron-right'):'');if(entry.directory)row.setAttribute('aria-expanded',String(expanded.has(p)));};
    let toggleRevision=0;
    const toggle=async()=>{const request=++toggleRevision;if(expanded.has(p)){expanded.delete(p);children.replaceChildren();drawArrow();await persistTree();return;}expanded.add(p);drawArrow();const pending=el('div');try{await tree(pending,p,depth+1);if(request!==toggleRevision)return;children.replaceChildren(...pending.childNodes);}catch(e){if(request!==toggleRevision)return;expanded.delete(p);drawArrow();throw e;}await persistTree();};
@@ -79,7 +80,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
  ctx.effect(wb.panel('explorer','Explorer','▱',async container=>{
   container.onclick=e=>{if(e.target.closest('.file-row,.tree-root,button,input,textarea,a'))return;multi.clear();selected='.';selectionAnchor=null;selectedDirectory=true;for(const row of container.querySelectorAll('.file-row')){row.classList.remove('selected');row.setAttribute('aria-selected','false');}if(container.contains(document.activeElement))document.activeElement.blur();const selection=window.getSelection();if(selection?.anchorNode&&container.contains(selection.anchorNode))selection.removeAllRanges();};
   container.oncontextmenu=e=>context(e);const root=button('',info.name,async()=>{selected='.';selectionAnchor=null;selectedDirectory=true;rootExpanded=!rootExpanded;await refresh();},'tree-root');root.setAttribute('aria-expanded',String(rootExpanded));root.append(el('span','tree-chevron codicon-'+(rootExpanded?'chevron-down':'chevron-right')),el('span','',info.name));const rows=el('div','tree-root-children');rows.setAttribute('role','tree');rows.setAttribute('aria-label','文件资源管理器');container.append(root,rows);
-  if(rootExpanded)try{await tree(rows);}catch(e){rows.append(el('p','panel-note',e.message));}
+  if(rootExpanded)try{await tree(rows);}catch(e){rows.append(el('p','panel-note',e.message));}installTreeSticky(container);
  }));
  for(const [id,name]of [['explorer.newText','file.txt'],['explorer.newMarkdown','file.md'],['explorer.newUnnamed','file']])ctx.effect(wb.command(id,'Explorer · 新建 '+name,()=>newFile(name)));
  const absolute=t=>t.external?Promise.resolve(t.path):manage('absolute',t.path).then(r=>r.path);
