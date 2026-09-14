@@ -1,6 +1,6 @@
 import {logMessage} from './ui.js';
 const targets=new Map();
-function destination(x,y){const node=document.elementFromPoint(x,y);for(const [host,handlers]of targets){if(!host.contains(node))continue;const row=node.closest('.file-row'),dir=row?(row.dataset.directory==='true'||row.classList.contains('tree-folder')?row.dataset.path:row.dataset.path?.split('/').slice(0,-1).join('/')||'.'):'.';return {...handlers,dir,highlight:row||host.querySelector('.tree-root')};}}
+export function destination(x,y){const node=document.elementFromPoint(x,y);for(const [source,handlers]of targets){const host=typeof source==='function'?source():source;if(!host?.contains(node))continue;const row=node.closest('.file-row'),dir=row?(row.dataset.directory==='true'||row.classList.contains('tree-folder')?row.dataset.path:row.dataset.path?.split('/').slice(0,-1).join('/')||'.'):'.';return {...handlers,dir,highlight:row||host.querySelector('.tree-root')};}}
 export function dragSource(row,move){
  row.addEventListener('pointerdown',e=>{
   if(e.button!==0||e.target.closest('input'))return;
