@@ -18,7 +18,7 @@ export default {id:'terminal',requires:['transport','workspace'],activate(ctx){
   if(resume){const attach=resumable.get(resume);if(attach){attach(ws);return;}ws.send(JSON.stringify({type:'error',message:'Terminal resume session unavailable'}));ws.close();return;}
 
   sessions.add(ws);let terminal,integration,exited=false,checking=false,closing=false,lastSubmit=0,shellState='unknown';
-  let queuedInput='',detached=false,expiry;const resumeId=randomUUID(),output=[];let outputBytes=0;const maxReplay=16*1024*1024;let replayOverflow=false;
+  let inputReady=false,queuedInput='',detached=false,expiry;const resumeId=randomUUID(),output=[];let outputBytes=0;const maxReplay=16*1024*1024;let replayOverflow=false;
   const remote=workspace.host,root=workspace.root,shell=process.env.SHELL||'/bin/zsh';
   const send=m=>{if(m.type==='data'){output.push(m.data);outputBytes+=Buffer.byteLength(m.data);while(outputBytes>maxReplay&&output.length){outputBytes-=Buffer.byteLength(output.shift());replayOverflow=true;}}if(ws.readyState===1)ws.send(JSON.stringify(m));};
   const state=async()=>{
@@ -53,7 +53,7 @@ export default {id:'terminal',requires:['transport','workspace'],activate(ctx){
     const status=await state();send({type:'closeResult',requestId:m.requestId,...status});
     if(!status.busy&&m.type==='close'){terminal?.kill();}else closing=false;
    }
-   if(m.type==='data'&&typeof m.data==='string'&&!closing){if(/[\r\n]/.test(m.data))lastSubmit=Date.now();if(terminal)terminal.write(m.data);else queuedInput+=m.data;}
+   if(m.type==='data'&&typeof m.data==='string'&&!closing){if(/[\r\n]/.test(m.data))lastSubmit=Date.now();if(terminal&&inputReady)terminal.write(m.data);else queuedInput+=m.data;}
    if(m.type==='resize'&&Number.isInteger(m.cols)&&Number.isInteger(m.rows)&&m.cols>0&&m.cols<1000&&m.rows>0&&m.rows<500)terminal?.resize(m.cols,m.rows);
   }catch(e){send({type:'error',message:e.message});}};
   ws.on('close',onClose);ws.on('message',onMessage);
@@ -62,10 +62,11 @@ export default {id:'terminal',requires:['transport','workspace'],activate(ctx){
    integration=remote?{token:null,dispose:async()=>{}}:await prepareShell(shell);
    if(ws.readyState!==1){await integration.dispose();return;}
    terminal=remote?pty.spawn('/usr/bin/ssh',['-tt','-o','ConnectTimeout=8','--',remote,`cd ${quote(root)} && exec "$SHELL" -l`],{name:'xterm-256color',cols:100,rows:28,env:process.env}):pty.spawn(shell,integration.args,{name:'xterm-256color',cols:100,rows:28,cwd:root,env:{...process.env,...integration.env,TERM:'xterm-256color'}});
-   const filter=markerFilter(integration.token,value=>{shellState=value;});
+   inputReady=!integration.token;
+   const filter=markerFilter(integration.token,value=>{if(value==='ready'){inputReady=true;if(queuedInput){terminal.write(queuedInput);queuedInput='';}}else shellState=value;});
    terminal.onData(data=>{const visible=filter(data);if(visible)send({type:'data',data:visible});});
    terminal.onExit(({exitCode})=>{exited=true;send({type:'exit',exitCode});ws.close();});
-   send({type:'ready',resumeId});if(queuedInput)terminal.write(queuedInput);
+   send({type:'ready',resumeId});if(inputReady&&queuedInput){terminal.write(queuedInput);queuedInput='';}
   }catch(e){send({type:'error',message:e.message});ws.close();}
  });
  ctx.on('workspace.changed',()=>{for(const s of sessions)s.close();});
