@@ -6,3 +6,13 @@ test('late sidebar render writes stay detached and new panel has fresh handlers 
  const next=replaceSidebarBody(previous);next.textContent='Settings';finish();await late;
  assert.equal(next.id,'sidebar-body');assert.equal(next.textContent,'Settings');assert.equal(previous.isConnected,false);assert.equal(next.oncontextmenu,undefined);assert.notEqual(next.className,'git-panel');assert.equal(typeof next.onpointermove,'function');
 });
+test('deferred tree refresh keeps the visible tree until the replacement is ready',()=>{
+ const doc={createElement:()=>({ownerDocument:doc,classList:{toggle(){},remove(){}}})};
+ let replacements=0;
+ const previous={ownerDocument:doc,id:'sidebar-body',textContent:'visible tree',replaceWith(){replacements++;}};
+ const pending=replaceSidebarBody(previous,true);
+ pending.textContent='new tree';
+ assert.equal(replacements,0);
+ assert.equal(previous.textContent,'visible tree');
+ assert.equal(pending.id,'sidebar-body');
+});
