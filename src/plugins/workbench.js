@@ -114,6 +114,7 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
   async showPanel(id){const p=panels.get(id);if(!p)return;ctx.emit('sidebar.leaving',{id:sidebarId,next:id});sidebarId=id;$('.sidebar').dataset.panel=id;$('.sidebar-heading span').textContent=id==='search'?p.label:p.label.toUpperCase();for(const [key,item]of panels)item.b.classList.toggle('selected',key===id);const body=replaceSidebarBody($('#sidebar-body'));await p.renderPanel(body);},
   refreshPanel(){return api.showPanel(sidebarId);},
   focusTerminal(t){if(docked===t||(t.group&&docked?.group===t.group))return;if(active!==t){active=t;render();}},
+  hideTerminal(t){if(!tabs.includes(t)||t.kind!=='terminal')return;const same=x=>x===t||!!(t.group&&x?.group===t.group);lastDock=t;if(same(docked))docked=null;if(same(active))active=[...tabs].reverse().find(x=>!same(x)&&x!==docked)||null;render();active?.focus?.();},
   async dock(){
    if(docked){lastDock=docked;docked=null;render();active?.focus?.();return;}
    let t=tabs.includes(lastDock)?lastDock:current()?.kind==='terminal'?current():[...tabs].reverse().find(t=>t.kind==='terminal');

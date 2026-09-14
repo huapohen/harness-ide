@@ -39,6 +39,7 @@ export default {id:'terminal',requires:['workbench','terminal.connect','theme'],
   socket.onerror=()=>{tab.connectionError=true;};socket.onclose=()=>{if(!disposed)tab.connectionError=true;};
   element.addEventListener('pointerdown',()=>{wb.focusTerminal(tab);term.focus();});
   element.addEventListener('contextmenu',e=>{e.preventDefault();document.querySelector('.terminal-context-menu')?.remove();const herdr=/herdr/i.test(tab.busyReason||'')&&term.hasMouseTracking();if(herdr)return;const menu=el('div','terminal-context-menu');menu.setAttribute('role','menu');
+   menu.append(button('Hide','Hide',()=>{menu.remove();wb.hideTerminal(tab);}));
    for(const [label,direction]of [['Split Right','vertical'],['Split Down','horizontal']])menu.append(button(label,label,()=>{menu.remove();term.focus();create(tab,direction).catch(logMessage);}));
    for(const [label,run]of [['Rename',()=>wb.rename(tab)],['Close',()=>wb.close(tab)]])menu.append(button(label,label,()=>{menu.remove();term.focus();return run();}));
    document.body.append(menu);menu.style.left=Math.min(e.clientX,innerWidth-menu.offsetWidth-8)+'px';menu.style.top=Math.min(e.clientY,innerHeight-menu.offsetHeight-8)+'px';
