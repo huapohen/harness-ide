@@ -9,8 +9,8 @@ test('hidden activity icons survive settings reload and unrelated layout writes'
  process.env.HARNESS_SETTINGS_DIR=dir;
  const mount=async()=>{const routes=new Map();await settings.activate({get:()=>({register:(name,fn)=>{routes.set(name,fn);return()=>{};}}),effect(){}});return routes;};
  try{
-  let routes=await mount();await routes.get('settings/layout/write')({hiddenPanels:['git','remote','plugins']});
-  routes=await mount();assert.deepEqual((await routes.get('settings/layout/read')()).hiddenPanels,['git','remote','plugins']);
+  let routes=await mount();await routes.get('settings/layout/write')({preferences:{'editor-word-wrap':'on','ide-zoom':'1.2'}});await routes.get('settings/layout/write')({hiddenPanels:['git','remote','plugins']});
+  routes=await mount();assert.equal((await routes.get('settings/layout/read')()).preferences['editor-word-wrap'],'on');assert.deepEqual((await routes.get('settings/layout/read')()).hiddenPanels,['git','remote','plugins']);
   await routes.get('settings/layout/write')({topTabAlignment:'left'});assert.deepEqual((await routes.get('settings/layout/read')()).hiddenPanels,['git','remote','plugins']);
   await routes.get('settings/layout/write')({hiddenPanels:[]});routes=await mount();assert.deepEqual((await routes.get('settings/layout/read')()).hiddenPanels,[]);
  }finally{if(previous===undefined)delete process.env.HARNESS_SETTINGS_DIR;else process.env.HARNESS_SETTINGS_DIR=previous;await fs.rm(dir,{recursive:true,force:true});}

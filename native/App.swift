@@ -95,7 +95,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
         configuration.userContentController.add(self, name: "clipboard")
         web = HarnessWebView(frame: .zero, configuration: configuration); web.registerForDraggedTypes([.fileURL]); web.uiDelegate = self; web.navigationDelegate = self
         (NSApplication.shared as? HarnessApplication)?.shortcutWeb = web
-        window.contentView = web; window.center(); window.makeKeyAndOrderFront(nil)
+        window.contentView = web
+        if !window.setFrameUsingName("HarnessMainWindow") { window.center() }
+        window.setFrameAutosaveName("HarnessMainWindow")
+        window.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
         guard let resources = Bundle.main.resourceURL else { return }
         let root = resources.appendingPathComponent("app").path

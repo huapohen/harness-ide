@@ -1,3 +1,4 @@
+import {savePreference} from '../preferences.js';
 import {replaceSidebarBody} from '../sidebar-panel.js';
 import {topTabLayout} from '../top-tab-layout.js';
 import {installTabActivation} from '../tab-activation.js';
@@ -12,7 +13,7 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
  const root=document.querySelector('#app');
  root.innerHTML=`<header class="titlebar"><div class="window-controls-space"></div><div class="top-tabs" role="tablist" aria-label="顶部标签"></div><button class="workspace-title" id="workspace-title" hidden>workspace</button><div class="window-controls-space" aria-hidden="true"></div></header><div class="layout"><nav class="activity"></nav><aside class="sidebar"><div class="sidebar-heading"><span>EXPLORER</span></div><div id="sidebar-body"></div></aside><div class="sidebar-divider" role="separator" aria-label="调整侧栏宽度" aria-orientation="vertical" tabindex="0"></div><main><div class="tabbar"><div class="tabs" role="tablist"></div><div class="tab-actions"></div></div><div class="breadcrumb" hidden></div><div class="panes"><div class="editor-area"></div><div class="divider" hidden></div><div class="dock" hidden></div></div></main><div class="secondary-divider" role="separator" aria-label="调整右侧栏宽度" aria-orientation="vertical" tabindex="0"></div><aside class="secondary-sidebar"><div class="secondary-content"></div></aside></div><footer><span id="connection">◇ Local</span><span id="git-branch"></span><span class="footer-spacer"></span><span id="shortcut-state"></span><span id="tab-kind"></span><span>UTF-8</span><button id="theme-button">One Dark Pro</button></footer>`;
  let zoom=Math.max(.5,Math.min(2,Number(localStorage.getItem('ide-zoom'))||1));
- const applyZoom=()=>{localStorage.setItem('ide-zoom',String(zoom));const handler=window.webkit?.messageHandlers.windowChrome;if(handler)handler.postMessage({action:'pageZoom',factor:zoom});else{document.documentElement.style.zoom=String(zoom);root.style.height=(innerHeight/zoom)+'px';}window.dispatchEvent(new Event('resize'));};
+ const applyZoom=()=>{savePreference('ide-zoom',String(zoom));const handler=window.webkit?.messageHandlers.windowChrome;if(handler)handler.postMessage({action:'pageZoom',factor:zoom});else{document.documentElement.style.zoom=String(zoom);root.style.height=(innerHeight/zoom)+'px';}window.dispatchEvent(new Event('resize'));};
  applyZoom();
  const commands=new Map(),tabs=[],panels=new Map(),multiTabs=new Set();let hiddenPanels;try{hiddenPanels=new Set(JSON.parse(localStorage.getItem('hidden-panels')||'[]'));}catch{hiddenPanels=new Set();}let tabSelectionAnchor=null,active=null,docked=null,lastDock=null,dockMaximized=false,sidebarId='explorer',closing=false;
  const $=s=>root.querySelector(s);
