@@ -24,6 +24,7 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
  const recent=(path,directory=false)=>window.webkit?.messageHandlers.nativeFiles?.postMessage({action:'recent',path,directory});
  function open(path,options={}){return options.fresh||options.duplicate?openFile(path,options):opening(documentIdentity(path,!!options.external,options.previewGroup),()=>openFile(path,options));}
  async function openFile(path,{external=false,fresh=false,duplicate=false,temporary=false,previewGroup='primary'}={}){
+  if(!fresh&&['doc','docx','ppt','pptx','xls','xlsx','odt','odp','ods','rtf'].includes(path.split('.').at(-1).toLowerCase())&&localStorage.getItem('office-open-mode')!=='preview'){await api('office/open',{path,external});return;}
   const identity=duplicate?'split:'+crypto.randomUUID():fresh?'untitled:'+crypto.randomUUID():documentIdentity(path,external,previewGroup);
   const existing=wb.tabs.find(t=>t.id===identity);if(existing){wb.open(existing);return;}
   const result=fresh?{data:'',version:null}:await api(external?'external':'read',{action:'read',path});
