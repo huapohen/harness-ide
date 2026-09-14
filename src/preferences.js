@@ -1,4 +1,4 @@
-const keys=['editor-word-wrap','ide-zoom','harness-theme','harness-backgrounds-one-dark-pro','harness-backgrounds-light'];
+const keys=['terminal-show-identity','editor-word-wrap','ide-zoom','harness-theme','harness-backgrounds-one-dark-pro','harness-backgrounds-light'];
 let api,pending=Promise.resolve();
 export async function loadPreferences(call){
  api=call;const saved=(await api('settings/layout/read')).preferences||{},migration={};

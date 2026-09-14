@@ -59,7 +59,7 @@ export default {id:'terminal',requires:['transport','workspace'],activate(ctx){
   ws.on('close',onClose);ws.on('message',onMessage);
   resumable.set(resumeId,next=>{if(!detached||exited){next.send(JSON.stringify({type:'error',message:'Terminal is not detached'}));next.close();return;}clearTimeout(expiry);ws.removeListener('close',onClose);ws.removeListener('message',onMessage);const previous=ws;sessions.delete(previous);ws=next;sessions.add(ws);previous.close();ws.on('close',onClose);ws.on('message',onMessage);if(output.length)ws.send(JSON.stringify({type:'data',data:output.join('')}));send({type:'ready',resumeId,resumed:true});});
   try{
-   integration=remote?{token:null,dispose:async()=>{}}:await prepareShell(shell);
+   integration=remote?{token:null,dispose:async()=>{}}:await prepareShell(shell,{showIdentity:new URL(req.url,'http://localhost').searchParams.get('showIdentity')==='1'});
    if(ws.readyState!==1){await integration.dispose();return;}
    terminal=remote?pty.spawn('/usr/bin/ssh',['-tt','-o','ConnectTimeout=8','--',remote,`cd ${quote(root)} && exec "$SHELL" -l`],{name:'xterm-256color',cols:100,rows:28,env:process.env}):pty.spawn(shell,integration.args,{name:'xterm-256color',cols:100,rows:28,cwd:root,env:{...process.env,...integration.env,TERM:'xterm-256color'}});
    inputReady=!integration.token;

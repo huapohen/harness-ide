@@ -5,7 +5,7 @@ import {randomBytes} from 'node:crypto';
 import {quote} from './workspace.mjs';
 // Zsh prompt/preexec markers distinguish even long-running shell builtins.
 // Original user startup files are sourced; no user dotfiles are modified.
-export async function prepareShell(shell){
+export async function prepareShell(shell,{showIdentity=true}={}){
  const token=randomBytes(16).toString('hex');
  if(path.basename(shell)!=='zsh')return {args:['-l'],env:{},token:null,dispose:async()=>{}};
  const directory=await fs.mkdtemp(path.join(os.tmpdir(),'harness-zsh-'));
@@ -14,6 +14,7 @@ export async function prepareShell(shell){
   let text=`[[ -f ${quote(path.join(original,name))} ]] && source ${quote(path.join(original,name))}\n`;
   if(name==='.zshenv')text+=`export ZDOTDIR=${quote(directory)}\n`;
   if(name==='.zshrc')text+=`autoload -Uz add-zsh-hook\n_harness_preexec() { printf '\\033]777;harness;${token};busy\\007'; }\n_harness_precmd() { printf '\\033]777;harness;${token};idle\\007'; }\nadd-zsh-hook preexec _harness_preexec\nadd-zsh-hook precmd _harness_precmd\nautoload -Uz add-zle-hook-widget\n_harness_line_init() { printf '\\033]777;harness;${token};ready\\007'; }\nadd-zle-hook-widget line-init _harness_line_init\n`;
+  if(name==='.zshrc'&&!showIdentity)text+=`_harness_compact_prompt() { PROMPT='%1~ %# '; RPROMPT=''; }\nadd-zsh-hook precmd _harness_compact_prompt\n`;
   await fs.writeFile(path.join(directory,name),text);
  }
  return {args:['-l'],env:{ZDOTDIR:directory},token,dispose:()=>fs.rm(directory,{recursive:true,force:true})};
