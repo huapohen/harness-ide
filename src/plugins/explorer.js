@@ -17,7 +17,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
  ctx.effect(()=>delete window.harnessDropFiles);
  const manage=async(action,path,extra={})=>{const result=await api('manage',{action,path,...extra});if(['create','rename','move','copy','delete','symlink'].includes(action))ctx.emit('explorer.mutated',{source:'left'});return result;};
  ctx.on('explorer.mutated',e=>{if(e.source!=='left'&&wb.$('.sidebar').dataset.panel==='explorer')refresh().catch(logMessage);});
- const refresh=async()=>{await persistTree();return wb.showPanel('explorer');};
+ const refresh=async()=>{const top=wb.$('#sidebar-body').scrollTop;await persistTree();await wb.showPanel('explorer');wb.$('#sidebar-body').scrollTop=top;};
  async function newFile(name='',dir=selectedDirectory?selected:parent(selected),directory=false){rootExpanded=true;let ancestor=dir;while(ancestor!=='.'){expanded.add(ancestor);ancestor=parent(ancestor);}await refresh();inlineCreate(wb.$('#sidebar-body'),dir,directory,name,async name=>{const p=join(dir,name);await manage('create',p,{directory});await refresh();if(!directory)await wb.run('file.open')(p);});}
 
  async function addLink(dir){const root=info.root,host=info.host,target=await wb.run('file.chooseFolder');if(!target)return;const data=await form('Add Symbolic Link Here',[{name:'name',label:'Link name',value:target.split('/').filter(Boolean).at(-1)}],'Create');if(!data)return;if(root!==info.root||host!==info.host)throw Error('Workspace changed; please try again');await manage('symlink',dir,{target,name:data.name});expanded.add(dir);rootExpanded=true;await refresh();}
