@@ -64,9 +64,9 @@ export default {id:'terminal',requires:['transport','workspace'],activate(ctx){
    terminal=remote?pty.spawn('/usr/bin/ssh',['-tt','-o','ConnectTimeout=8','--',remote,`cd ${quote(root)} && exec "$SHELL" -l`],{name:'xterm-256color',cols:100,rows:28,env:process.env}):pty.spawn(shell,integration.args,{name:'xterm-256color',cols:100,rows:28,cwd:root,env:{...process.env,...integration.env,TERM:'xterm-256color'}});
    inputReady=!integration.token;
    const filter=markerFilter(integration.token,value=>{if(value==='ready'){inputReady=true;if(queuedInput){terminal.write(queuedInput);queuedInput='';}}else shellState=value;});
-   terminal.onData(data=>{const visible=filter(data);if(visible)send({type:'data',data:visible});});
+   terminal.onData(data=>{const wasReady=inputReady,visible=filter(data);if(visible)send({type:'data',data:visible});if(!wasReady&&inputReady)send({type:'inputReady'});});
    terminal.onExit(({exitCode})=>{exited=true;send({type:'exit',exitCode});ws.close();});
-   send({type:'ready',resumeId});if(inputReady&&queuedInput){terminal.write(queuedInput);queuedInput='';}
+   send({type:'ready',resumeId});if(inputReady)send({type:'inputReady'});if(inputReady&&queuedInput){terminal.write(queuedInput);queuedInput='';}
   }catch(e){send({type:'error',message:e.message});ws.close();}
  });
  ctx.on('workspace.changed',()=>{for(const s of sessions)s.close();});

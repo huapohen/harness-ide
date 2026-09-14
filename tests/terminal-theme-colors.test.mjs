@@ -17,3 +17,11 @@ test('startup cursor stays hidden at origin but can return there after positioni
  cursor={x:24,y:0,visible:true};term.renderer.render(buffer);assert.equal(shown,true);
  cursor={x:0,y:0,visible:true};term.renderer.render(buffer);assert.equal(shown,true);
 });
+
+test('shell startup cursor stays hidden even after preliminary cursor movement',()=>{
+ let shown,forced;const term={startupReady:false,element:{style:{}},renderer:{render(buffer,force){shown=buffer.getCursor().visible;forced=force;},setTheme(){}}};
+ installThemeAdapter(term,{background:'#282c34',foreground:'#abb2bf'});
+ const buffer={getCursor:()=>({x:30,y:0,visible:true})};
+ term.renderer.render(buffer);assert.equal(shown,false);
+ term.startupReady=true;term.renderer.render(buffer);assert.equal(shown,true);assert.equal(forced,true);
+});
