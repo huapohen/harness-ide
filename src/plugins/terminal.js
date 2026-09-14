@@ -6,7 +6,7 @@ import {installTerminalMouse} from '../terminal-mouse.js';
 import {el,button,logMessage} from '../ui.js';
 import {installThemeAdapter} from '../ghostty-theme.js';
 export default {id:'terminal',requires:['workbench','terminal.connect','theme'],activate(ctx){
- const wb=ctx.get('workbench'),owned=new Set();let count=0,ready;
+ const wb=ctx.get('workbench'),owned=new Set();let ready;
  async function create(splitTarget=null,direction=null,restore=null){
   ready ||= import('ghostty-web').then(async mod=>{const ghostty=await mod.Ghostty.load(assetURL('/ghostty-vt.wasm'));return {...mod,ghostty};});const {Terminal,FitAddon,ghostty}=await ready;
   const element=el('section','terminal-pane tab-content');const mount=el('div','terminal-mount');element.append(mount);
@@ -19,7 +19,7 @@ export default {id:'terminal',requires:['workbench','terminal.connect','theme'],
   // Focus the dedicated input synchronously; never edit the canvas container.
   term.focus=()=>mount.querySelector('textarea')?.focus({preventScroll:true});
   const updateFont=()=>{term.options.fontSize=fonts.terminalSize;term.options.fontFamily=fonts.family+', monospace';tab.setTheme?.(ctx.get('theme').current());tab.resize();};window.addEventListener('content-font-changed',updateFont);
-  const fit=new FitAddon();term.loadAddon(fit);const socket=ctx.get('terminal.connect')(restore?.resumeId),pending=new Map();const number=++count;count=Math.max(count,Number(restore?.title?.match(/^t(\d+)$/)?.[1])||0);let disposed=false,exited=false,restoring=!!restore?.resumeId,disposeMouse=()=>{};
+  const fit=new FitAddon();term.loadAddon(fit);const socket=ctx.get('terminal.connect')(restore?.resumeId),pending=new Map();const used=new Set(wb.tabs.filter(t=>t.kind==='terminal').map(t=>t.title));let number=1;while(used.has(`t${number}`))number++;let disposed=false,exited=false,restoring=!!restore?.resumeId,disposeMouse=()=>{};
   const tab={id:restore?.id||'terminal:'+crypto.randomUUID(),title:restore?.title||`t${number}`,kind:'terminal',icon:'›_',element,terminal:term,busy:true,
    resize:()=>{if(!restoring&&!element.hidden){try{fitVisibleTerminal(term,fit,mount);}catch{}}},focus:()=>term.focus(),
    dispose:()=>{if(disposed)return;disposed=true;clearTimeout(startupTimer);window.removeEventListener('content-font-changed',updateFont);disposeMouse();observer.disconnect();socket.close();term.dispose();owned.delete(tab);for(const {resolve,timer}of pending.values()){clearTimeout(timer);resolve({busy:!exited,reason:'终端连接已断开'});}pending.clear();}
