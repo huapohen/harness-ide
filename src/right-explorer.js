@@ -1,3 +1,4 @@
+import {inlineCreate} from './explorer-inline.js';
 import {contextVersion,topLevelPaths,expandAncestors} from './explorer-operations.js';
 import {autoSave} from './auto-save.js';
 import {el,button,form,menuAt,logMessage} from './ui.js';
@@ -18,7 +19,8 @@ export async function rightExplorer(ctx){
  const parent=p=>p.includes('/')?p.slice(0,p.lastIndexOf('/')):'.',join=(p,n)=>p==='.'?n:p+'/'+n;
  const absolute=p=>info.root+(p==='.'?'':'/'+p);
  const request=(action,data={})=>{if(!info||disposed)throw Error('请先打开右侧文件夹');return api('right/explorer',{...data,root:info.root,action});};
- const manage=(operation,path,data={})=>request('manage',{operation,path,...data});
+ const manage=async(operation,path,data={})=>{const result=await request('manage',{operation,path,...data});if(['create','rename','move','copy','delete','symlink','import'].includes(operation))ctx.emit('explorer.mutated',{source:'right'});return result;};
+ ctx.on('explorer.mutated',e=>{if(e.source!=='right')render().catch(logMessage);});
  const persist=()=>info?api('settings/rightExplorer/write',{workspace:{root:info.root},state:{expanded:[...expanded],rootExpanded,selected,scrollTop}}).catch(logMessage):Promise.resolve();
  const schedule=()=>{clearTimeout(timer);timer=setTimeout(persist,150);};
  host.classList.add('right-explorer');host.setAttribute('aria-label','右侧文件资源管理器');
@@ -47,13 +49,14 @@ export async function rightExplorer(ctx){
  const open=p=>openPath(absolute(p));
  const affected=p=>{const target=absolute(p),primary=ctx.get('workspace').info();return wb.tabs.filter(t=>{const full=t.external?t.path:!primary.host&&t.path?primary.root+'/'+t.path:null;return full===target||full?.startsWith(target+'/');});};
  async function remove(paths){const check=guard();for(const p of paths){for(const t of affected(p)){if(!await wb.close(t))return;check();}check();await manage('delete',p);check();for(const x of [...expanded])if(x===p||x.startsWith(p+'/'))expanded.delete(x);}multi.clear();selected='.';await persist();await render();}
- async function create(dir,directory){const check=guard();const values=await form('',[{name:'name',label:'',ariaLabel:directory?'Folder name':'File name'}],'创建',{compact:true,ariaLabel:directory?'New Folder':'New File'});if(!values)return;check();const p=join(dir,values.name);await manage('create',p,{directory});check();rootExpanded=true;expandAncestors(expanded,dir);selected=p;multi=new Set([p]);await persist();check();await render();check();if(!directory)await open(p);}
+ async function create(dir,directory){const check=guard();rootExpanded=true;expandAncestors(expanded,dir);await persist();await render();check();inlineCreate(host,dir,directory,'',async name=>{check();const p=join(dir,name);await manage('create',p,{directory});check();selected=p;multi=new Set([p]);await persist();await render();if(!directory)await open(p);});}
+
  async function addLink(dir){const check=guard(),target=await wb.run('file.chooseFolder');if(!target)return;check();const data=await form('Add Symbolic Link Here',[{name:'name',label:'Link name',value:target.split('/').filter(Boolean).at(-1)}],'Create');if(!data)return;check();await manage('symlink',dir,{target,name:data.name});check();rootExpanded=true;expandAncestors(expanded,dir);await persist();await render();}
  async function rename(p,row){const check=guard();if(row.querySelector('input'))return;const label=row.querySelector('.tree-label'),name=p.split('/').at(-1),input=el('input','explorer-rename');input.value=name;input.setAttribute('aria-label','重命名 '+name);label.replaceChildren(input);let done=false;
-  const finish=async commit=>{if(done||input.disabled)return;if(!commit||input.value===name){done=true;label.textContent=name;row.focus();return;}const next=input.value.trim();if(!next||next==='.'||next==='..'||/[\\/\0]/.test(next)){input.setCustomValidity('请输入有效名称');input.reportValidity();return;}input.disabled=true;
+  const finish=async commit=>{if(done||input.disabled)return;if(!commit||input.value===name){done=true;input.setCustomValidity('');label.textContent=name;row.focus();return;}const next=input.value.trim();if(!next||next==='.'||next==='..'||/[\\/\0]/.test(next)){input.setCustomValidity('请输入有效名称');input.reportValidity();return;}input.disabled=true;
    try{check();const before=absolute(p),destination=join(parent(p),next),after=absolute(destination),tabs=affected(p),primaryRoot=ctx.get('workspace').info().root;await manage('rename',p,{destination});done=true;for(const t of tabs){if(t.external)t.acceptRename?.(after+t.path.slice(before.length),(after+t.path.slice(before.length)).split('/').at(-1));else{const root=primaryRoot,newPath=(after+(root+'/'+t.path).slice(before.length)).slice(root.length+1);t.acceptRename?.(newPath,newPath.split('/').at(-1));}}check();for(const x of [...expanded])if(x===p||x.startsWith(p+'/')){expanded.delete(x);expanded.add(destination+x.slice(p.length));}selected=destination;multi=new Set([destination]);await persist();await render();wb.render();}catch(e){input.disabled=false;input.setCustomValidity(e.message);input.reportValidity();input.focus();}
   };
-  input.oninput=()=>input.setCustomValidity('');input.onclick=input.ondblclick=e=>e.stopPropagation();input.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();finish(e.key==='Enter').catch(logMessage);}};
+  input.onblur=()=>finish(false);input.onpointerdown=e=>e.stopPropagation();input.oninput=()=>input.setCustomValidity('');input.onclick=input.ondblclick=e=>e.stopPropagation();input.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();finish(e.key==='Enter').catch(logMessage);}};
   requestAnimationFrame(()=>{if(input.isConnected){input.focus();const dot=name.lastIndexOf('.');input.setSelectionRange(0,row.dataset.directory==='true'||dot<=0?name.length:dot);}});
  }
  async function copyPath(p){const text=absolute(p),handler=window.webkit?.messageHandlers.clipboard;if(handler)handler.postMessage({id:crypto.randomUUID(),action:'write',text});else await navigator.clipboard.writeText(text);}

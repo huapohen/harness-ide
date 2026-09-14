@@ -24,3 +24,7 @@ test('symbolic links preserve target contents and never replace existing entries
  assert.equal(await fs.readFile(target+'/keep','utf8'),'original');
  }finally{await fs.rm(tmp,{recursive:true,force:true});}
 });
+test('directory rename does not read large child files for editor history',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'harness-large-rename-'));
+ try{await fs.mkdir(root+'/before');const file=await fs.open(root+'/before/large.bin','wx');await file.truncate(17*1024*1024);await file.close();await rightExplorer({root,action:'manage',operation:'rename',path:'before',destination:'after'},new Workspace(root));assert.equal((await fs.stat(root+'/after/large.bin')).size,17*1024*1024);await assert.rejects(fs.stat(root+'/before'),{code:'ENOENT'});}finally{await fs.rm(root,{recursive:true,force:true});}
+});
