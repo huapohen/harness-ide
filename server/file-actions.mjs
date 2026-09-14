@@ -13,8 +13,9 @@ export async function fileAction(w,q){
   for(const {src,dest}of jobs)await fs.cp(src,dest,{recursive:true,force:false,errorOnExist:true});return {count:jobs.length};
  }
  if(q.action==='symlink'){if(w.host)throw Error('Symbolic link creation currently requires a local folder');if(typeof q.target!=='string'||!path.isAbsolute(q.target))throw Error('Target must be an absolute path');await fs.stat(q.target);const dir=await safePath(w.root,q.path);if(!(await fs.stat(dir)).isDirectory())throw Error('Destination must be a folder');if(typeof q.name!=='string'||!q.name.trim()||q.name==='.'||q.name==='..'||/[\\/\0]/.test(q.name))throw Error('Invalid link name');await fs.symlink(q.target,path.join(dir,q.name));return {}; }
+ if(q.destinationRoot!==undefined&&(w.host||typeof q.destinationRoot!=='string'||!path.isAbsolute(q.destinationRoot)))throw Error('Cross-root moves require local absolute folders');
  if(w.host)return w.remote({op:'manage',...q});
- const destination=async rel=>{if(typeof rel!=='string'||!path.basename(rel)||rel==='.')throw Error('Invalid destination');const parent=await safePath(w.root,path.dirname(rel));const p=path.join(parent,path.basename(rel));try{await fs.lstat(p);throw Error('目标已存在');}catch(e){if(e.code!=='ENOENT')throw e;}return p;};
+ const destination=async rel=>{if(typeof rel!=='string'||!path.basename(rel)||rel==='.')throw Error('Invalid destination');const destinationRoot=q.destinationRoot?await fs.realpath(q.destinationRoot):w.root;const parent=await safePath(destinationRoot,path.dirname(rel));const p=path.join(parent,path.basename(rel));try{await fs.lstat(p);throw Error('目标已存在');}catch(e){if(e.code!=='ENOENT')throw e;}return p;};
  if(q.action==='create'){const p=await destination(q.path);if(q.directory)await fs.mkdir(p);else await fs.writeFile(p,'',{flag:'wx'});return {};}
  const p=await safePath(w.root,q.path);if(q.action==='absolute')return {path:p};
  if(q.action==='reveal'){await exec('/usr/bin/open',['-R',p]);return {};}

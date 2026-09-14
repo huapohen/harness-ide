@@ -340,3 +340,6 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 .terminal-pane{position:relative}.terminal-hide{position:absolute;top:0;right:0;z-index:5;width:22px;height:18px;padding:0;display:flex;align-items:center;justify-content:center;font-size:0;line-height:1;opacity:0;transition:opacity .15s;color:var(--fg)}.terminal-hide::before,.terminal-hide::after{content:"";position:absolute;width:12px;height:1px;background:currentColor;transform:rotate(45deg)}.terminal-hide::after{transform:rotate(-45deg)}.terminal-hide:hover,.terminal-hide:focus-visible{opacity:1}.terminal-hide:hover{color:var(--strong);background:var(--hover)}
 
 .terminal-split>.split-sash{flex:0 0 1px;position:relative;overflow:visible;z-index:6}.terminal-split>.split-sash::after{content:"";position:absolute;inset:0 -3px}.terminal-split.horizontal>.split-sash::after{inset:-3px 0}
+
+.file-row.explorer-drop-target,.tree-root.explorer-drop-target{background:var(--selected)}
+.file-row{user-select:none;-webkit-user-select:none}

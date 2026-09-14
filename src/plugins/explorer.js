@@ -1,3 +1,4 @@
+import {dragSource,dropTarget} from '../explorer-drag.js';
 import {inlineCreate} from '../explorer-inline.js';
 import {rightExplorer} from '../right-explorer.js';
 import {selectRange} from '../../shared/range-selection.js';
@@ -58,6 +59,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
    const drawArrow=()=>{arrow.className='tree-chevron'+(entry.directory?' codicon-'+(expanded.has(p)?'chevron-down':'chevron-right'):'');if(entry.directory)row.setAttribute('aria-expanded',String(expanded.has(p)));};
    let toggleRevision=0;
    const toggle=async()=>{const request=++toggleRevision;if(expanded.has(p)){expanded.delete(p);children.replaceChildren();drawArrow();await persistTree();return;}expanded.add(p);drawArrow();const pending=el('div');try{await tree(pending,p,depth+1);if(request!==toggleRevision)return;children.replaceChildren(...pending.childNodes);}catch(e){if(request!==toggleRevision)return;expanded.delete(p);drawArrow();throw e;}await persistTree();};
+   dragSource(row,async target=>{if((target.host||null)!==(info.host||null))throw Error('暂不支持本地与 SSH 之间拖动');const destination=join(target.dir,p.split('/').at(-1));if(target.root===info.root&&destination===p)return false;if(!await closeAffected(p))return false;await manage('move',p,{destination,...(target.root===info.root?{}:{destinationRoot:target.root})});await refresh();});
    row.onmousedown=e=>{if(e.metaKey||e.shiftKey)e.preventDefault();};
    row.onclick=e=>{Promise.resolve().then(async()=>{markSelection(row,p,entry.directory,e.metaKey,e.shiftKey&&!e.altKey);if(e.altKey)await copyText(e.shiftKey?p:(await manage('absolute',p)).path);if(e.metaKey||(e.shiftKey&&!e.altKey)){if(!row.querySelector('input'))row.focus();return;}if(entry.directory)await toggle();else{await wb.run('file.open')(p,{temporary:true});if(!row.querySelector('input'))row.focus();}}).catch(logMessage);};
    drawArrow();if(entry.directory)row.append(arrow);
@@ -71,6 +73,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
    row.ondblclick=e=>{e.preventDefault();e.stopPropagation();rename(p).catch(logMessage);};row.onfocus=()=>{selected=p;selectedDirectory=entry.directory;};if(entry.directory){const branch=el('div','tree-branch');row.classList.add('tree-folder');row.style.top=((depth+1)*22)+'px';branch.append(row,children);container.append(branch);}else container.append(row,children);if(entry.directory&&expanded.has(p))try{await tree(children,p,depth+1);}catch(error){children.append(el('p','panel-note','无法展开：'+error.message));}
   }
  }
+ ctx.effect(dropTarget(wb.$('#sidebar-body'),()=>({root:info.root,host:info.host}),async dir=>{rootExpanded=true;let p=dir;while(p!=='.'){expanded.add(p);p=parent(p);}await refresh();}));
  ctx.effect(wb.panel('explorer','Explorer','▱',async container=>{
   container.onclick=e=>{if(e.target.closest('.file-row,.tree-root,button,input,textarea,a'))return;multi.clear();selected='.';selectionAnchor=null;selectedDirectory=true;for(const row of container.querySelectorAll('.file-row')){row.classList.remove('selected');row.setAttribute('aria-selected','false');}if(container.contains(document.activeElement))document.activeElement.blur();const selection=window.getSelection();if(selection?.anchorNode&&container.contains(selection.anchorNode))selection.removeAllRanges();};
   container.oncontextmenu=e=>context(e);const root=button('',info.name,async()=>{selected='.';selectionAnchor=null;selectedDirectory=true;rootExpanded=!rootExpanded;await refresh();},'tree-root');root.setAttribute('aria-expanded',String(rootExpanded));root.append(el('span','tree-chevron codicon-'+(rootExpanded?'chevron-down':'chevron-right')),el('span','',info.name));const rows=el('div','tree-root-children');rows.setAttribute('role','tree');rows.setAttribute('aria-label','文件资源管理器');container.append(root,rows);

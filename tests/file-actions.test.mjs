@@ -17,3 +17,7 @@ test('Explorer create copy rename rejects overwrite and path escape',async()=>{
  await assert.rejects(fileAction(w,{action:'delete',path:'.'}));
  }finally{await fs.rm(root,{recursive:true,force:true});}
 });
+test('cross-root move preserves content and refuses existing destination',async()=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'harness-cross-move-'));
+ try{const a=root+'/a',b=root+'/b';await fs.mkdir(a);await fs.mkdir(b);await fs.writeFile(a+'/probe','source');await fs.writeFile(b+'/probe','existing');const w=new Workspace(a);await assert.rejects(fileAction(w,{action:'move',path:'probe',destinationRoot:b,destination:'probe'}),/已存在/);assert.equal(await fs.readFile(a+'/probe','utf8'),'source');assert.equal(await fs.readFile(b+'/probe','utf8'),'existing');await fileAction(w,{action:'move',path:'probe',destinationRoot:b,destination:'moved'});assert.equal(await fs.readFile(b+'/moved','utf8'),'source');await assert.rejects(fs.stat(a+'/probe'),{code:'ENOENT'});}finally{await fs.rm(root,{recursive:true,force:true});}
+});
