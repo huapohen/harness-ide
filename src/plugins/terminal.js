@@ -25,6 +25,8 @@ export default {id:'terminal',requires:['workbench','terminal.connect','theme'],
    dispose:()=>{if(disposed)return;disposed=true;clearTimeout(startupTimer);window.removeEventListener('content-font-changed',updateFont);disposeMouse();observer.disconnect();socket.close();term.dispose();owned.delete(tab);for(const {resolve,timer}of pending.values()){clearTimeout(timer);resolve({busy:!exited,reason:'终端连接已断开'});}pending.clear();}
   };
   wb.open(tab);if(splitTarget&&wb.tabs.includes(splitTarget))wb.split(splitTarget,tab,direction);term.open(mount);mount.setAttribute('contenteditable','false');const observer=new ResizeObserver(()=>tab.resize());observer.observe(mount);owned.add(tab);
+  const hideButton=button('×','Hide Terminal',()=>wb.hideTerminal(tab),'terminal-hide');
+  hideButton.addEventListener('pointerdown',e=>e.stopPropagation());element.append(hideButton);
   const earlyInput=[];
   const send=m=>{if(socket.readyState===1)socket.send(JSON.stringify(m));else if(socket.readyState===0&&m.type==='data')earlyInput.push(m);};
   function request(type){if(exited)return Promise.resolve({busy:false});if(socket.readyState!==1)return Promise.resolve({busy:true,reason:'终端连接不可用，无法确认任务状态'});return new Promise(resolve=>{const id=crypto.randomUUID(),timer=setTimeout(()=>{pending.delete(id);resolve({busy:true,reason:'状态确认超时，保留终端'});},4000);pending.set(id,{resolve,timer});send({type,requestId:id});});}
