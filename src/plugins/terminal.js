@@ -14,15 +14,16 @@ export default {id:'terminal',requires:['workbench','terminal.connect','theme'],
   // Ghostty Web's deferred focus steals focus from inline tab rename inputs.
   term.focus=()=>mount.focus({preventScroll:true});
   const updateFont=()=>{term.options.fontSize=fonts.terminalSize;term.options.fontFamily=fonts.family+', monospace';tab.setTheme?.(ctx.get('theme').current());tab.resize();};window.addEventListener('content-font-changed',updateFont);
-  const fit=new FitAddon();term.loadAddon(fit);const socket=ctx.get('terminal.connect')(restore?.resumeId),pending=new Map();const number=++count;count=Math.max(count,Number(restore?.title?.match(/^t(\d+)$/)?.[1])||0);let disposed=false,exited=false,disposeMouse=()=>{};
+  const fit=new FitAddon();term.loadAddon(fit);const socket=ctx.get('terminal.connect')(restore?.resumeId),pending=new Map();const number=++count;count=Math.max(count,Number(restore?.title?.match(/^t(\d+)$/)?.[1])||0);let disposed=false,exited=false,restoring=!!restore?.resumeId,disposeMouse=()=>{};
   const tab={id:restore?.id||'terminal:'+crypto.randomUUID(),title:restore?.title||`t${number}`,kind:'terminal',icon:'›_',element,terminal:term,busy:true,
-   resize:()=>{if(!element.hidden){try{fitVisibleTerminal(term,fit,mount);}catch{}}},focus:()=>term.focus(),
+   resize:()=>{if(!restoring&&!element.hidden){try{fitVisibleTerminal(term,fit,mount);}catch{}}},focus:()=>term.focus(),
    dispose:()=>{if(disposed)return;disposed=true;window.removeEventListener('content-font-changed',updateFont);disposeMouse();observer.disconnect();socket.close();term.dispose();owned.delete(tab);for(const {resolve,timer}of pending.values()){clearTimeout(timer);resolve({busy:!exited,reason:'终端连接已断开'});}pending.clear();}
   };
   wb.open(tab);if(splitTarget&&wb.tabs.includes(splitTarget))wb.split(splitTarget,tab,direction);term.open(mount);const observer=new ResizeObserver(()=>tab.resize());observer.observe(mount);owned.add(tab);
   const send=m=>{if(socket.readyState===1)socket.send(JSON.stringify(m));};
   function request(type){if(exited)return Promise.resolve({busy:false});if(socket.readyState!==1)return Promise.resolve({busy:true,reason:'终端连接不可用，无法确认任务状态'});return new Promise(resolve=>{const id=crypto.randomUUID(),timer=setTimeout(()=>{pending.delete(id);resolve({busy:true,reason:'状态确认超时，保留终端'});},4000);pending.set(id,{resolve,timer});send({type,requestId:id});});}
   tab.copyCwd=async(relative=false)=>{const result=await request('cwd');if(!result.cwd)throw new Error(result.error||result.reason||'无法读取终端当前目录');const text=relative?result.relative:result.cwd;const handler=window.webkit?.messageHandlers.clipboard;if(handler)handler.postMessage({id:crypto.randomUUID(),action:'write',text});else await navigator.clipboard.writeText(text);};
+  tab.finishHotRestore=()=>{restoring=false;tab.resize();send({type:'resize',cols:term.cols,rows:term.rows});};
   tab.detachForUpdate=()=>request('detach');tab.commitUpdate=()=>send({type:'commitUpdate'});tab.cancelDetach=()=>send({type:'cancelDetach'});
   tab.checkClose=()=>request('checkClose');tab.requestClose=()=>request('close');tab.sendData=data=>send({type:'data',data});
   disposeMouse=installTerminalMouse(term,element,data=>send({type:'data',data}),()=>/herdr/i.test(tab.busyReason||''));
@@ -30,7 +31,7 @@ export default {id:'terminal',requires:['workbench','terminal.connect','theme'],
   socket.onopen=()=>{tab.resize();};
   socket.onmessage=e=>{const m=JSON.parse(e.data);
    if(m.type==='data')term.write(m.data);
-   if(m.type==='ready'){tab.resumeId=m.resumeId;tab.isReady=true;tab.resize();send({type:'resize',cols:term.cols,rows:term.rows});}
+   if(m.type==='ready'){tab.resumeId=m.resumeId;tab.isReady=true;if(!restoring){tab.resize();send({type:'resize',cols:term.cols,rows:term.rows});}}
    if(m.type==='state'){tab.busy=m.busy;tab.busyReason=m.reason;}
    if(m.type==='closeResult'||m.type==='cwdResult'||m.type==='detachResult'){const request=pending.get(m.requestId);if(request){clearTimeout(request.timer);pending.delete(m.requestId);request.resolve(m);}}
    if(m.type==='exit'){exited=true;wb.remove(tab);}

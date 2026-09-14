@@ -13,7 +13,7 @@ export async function startHotUpdates(kernel){
    else{if(saved.path)await wb.run('file.open')(saved.path,{external:saved.external,duplicate:true,previewGroup:saved.previewGroup});else await wb.run('file.newText');tab=wb.active();if(saved.state)await tab.hotRestore(saved.state);}
    remap.set(saved.id,tab.id);tab.id=saved.id;tab.title=saved.title;tab.pinned=saved.pinned;tab.temporary=saved.temporary;tab.previewGroup=saved.previewGroup;tab.element.scrollTop=saved.scrollTop||0;
   }
-  await wb.restoreLayout(snapshot.layout);setTimeout(()=>{for(const t of wb.tabs)t.hotRestoreScroll?.();},0);for(const t of wb.tabs)t.commitUpdate?.();sessionStorage.removeItem('harness-hot-snapshot');sessionStorage.removeItem('harness-hot-navigation');window.harnessHotUpdating=false;
+  await wb.restoreLayout(snapshot.layout);await new Promise(resolve=>requestAnimationFrame(resolve));for(const t of wb.tabs)t.finishHotRestore?.();setTimeout(()=>{for(const t of wb.tabs)t.hotRestoreScroll?.();},0);for(const t of wb.tabs)t.commitUpdate?.();sessionStorage.removeItem('harness-hot-snapshot');sessionStorage.removeItem('harness-hot-navigation');window.harnessHotUpdating=false;
  }
  await restore();window.harnessHotReady=true;
  async function snapshot(){await wb.flushFileOperations?.();if(document.querySelector('dialog[open],.tab-rename,.explorer-rename'))throw Error('Waiting for the current dialog or rename to finish');
