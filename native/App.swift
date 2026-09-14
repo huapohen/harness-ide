@@ -81,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
         }
         let viewItem = NSMenuItem(); viewItem.title = "View"; menu.addItem(viewItem)
         let viewMenu = NSMenu(title: "View"); viewItem.submenu = viewMenu
-        for (title, command) in [("Toggle Activity Bar", "view.activity"), ("Toggle Side Bar", "view.sidebar"), ("Toggle Status Bar", "view.status"), ("Toggle Title Bar", "view.titlebar"), ("Toggle Secondary Side Bar", "view.secondary")] {
+        for (title, command) in [("Toggle Activity Bar", "view.activity"), ("Toggle Side Bar", "view.sidebar"), ("Toggle Status Bar", "view.status"), ("Toggle Title Bar", "view.titlebar"), ("Toggle Secondary Side Bar", "view.secondary"), ("Toggle Terminal", "terminal.dock")] {
             let item = NSMenuItem(title: title, action: #selector(fileCommand(_:)), keyEquivalent: ""); item.target = self; item.representedObject = command; viewMenu.addItem(item)
         }
         NSApplication.shared.mainMenu = menu
