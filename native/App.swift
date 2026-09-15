@@ -6,34 +6,16 @@ final class HarnessWebView: WKWebView {
     private func fileURLs(_ sender: NSDraggingInfo) -> [URL] {
         (sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
     }
-    private func updateFileDrag(_ sender: NSDraggingInfo) {
-        let p = convert(sender.draggingLocation, from: nil)
-        let x = p.x / pageZoom, y = (isFlipped ? p.y : bounds.height - p.y) / pageZoom
-        evaluateJavaScript("window.harnessDragFiles?.(\(x),\(y))")
-    }
-    override func draggingExited(_ sender: NSDraggingInfo?) {
-        evaluateJavaScript("window.harnessDragFiles?.()")
-        super.draggingExited(sender)
-    }
-    override func draggingEnded(_ sender: NSDraggingInfo) {
-        evaluateJavaScript("window.harnessDragFiles?.()")
-        super.draggingEnded(sender)
-    }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        if fileURLs(sender).isEmpty { return super.draggingEntered(sender) }
-        updateFileDrag(sender)
-        return .copy
+        fileURLs(sender).isEmpty ? super.draggingEntered(sender) : .copy
     }
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
-        if fileURLs(sender).isEmpty { return super.draggingUpdated(sender) }
-        updateFileDrag(sender)
-        return .copy
+        fileURLs(sender).isEmpty ? super.draggingUpdated(sender) : .copy
     }
     override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
         fileURLs(sender).isEmpty ? super.prepareForDragOperation(sender) : true
     }
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        evaluateJavaScript("window.harnessDragFiles?.()")
         let urls = fileURLs(sender)
         if urls.isEmpty { return super.performDragOperation(sender) }
         let p = convert(sender.draggingLocation, from: nil)

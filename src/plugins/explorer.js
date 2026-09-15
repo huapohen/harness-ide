@@ -15,18 +15,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
  const join=(p,n)=>p==='.'?n:p+'/'+n;
  const update=()=>{wb.$('#workspace-title').textContent=`${info.host?info.host+' / ':''}${info.name}`;ctx.emit('workspace.changed',info);};
  ctx.provide('workspace',{info:()=>info,async connect(root,host,{restoring=false}={}){if(wb.tabs.some(t=>t.pinned))throw Error('Unpin tabs before switching workspace');await wb.session?.flush();if(!await wb.closeAll())return;info=await api('connect',{root,host});clipboard=compare=null;selected='.';selectionAnchor=null;selectedDirectory=true;rootExpanded=true;expanded.clear();multi.clear();await restoreTree();update();await wb.showPanel('explorer');if(!restoring&&wb.commands.has('terminal.new'))await wb.run('terminal.new');}});
- let externalDropHighlight;
- const clearExternalDrop=()=>{externalDropHighlight?.classList.remove('explorer-drop-target');externalDropHighlight=null;};
- window.harnessDragFiles=(x,y)=>{
-  clearExternalDrop();if(!Number.isFinite(x)||!Number.isFinite(y))return;
-  const node=document.elementFromPoint(x,y),host=wb.$('#sidebar-body');
-  if(!node?.closest('.sidebar')||wb.$('.sidebar').dataset.panel!=='explorer')return;
-  const dir=node.closest('[data-drop-directory]')?.dataset.dropDirectory||'.';
-  externalDropHighlight=dir==='.'?host.querySelector('.tree-root'):[...host.querySelectorAll('.file-row')].find(row=>row.dataset.path===dir);
-  externalDropHighlight?.classList.add('explorer-drop-target');
- };
- ctx.effect(()=>{clearExternalDrop();delete window.harnessDragFiles;});
- window.harnessDropFiles=async(paths,x,y)=>{clearExternalDrop();try{const node=document.elementFromPoint(x,y);if(node?.closest('.editor-area,.tabbar')){const open=wb.run('file.open');if(open)for(const path of paths){try{await open(path,{external:true});}catch(error){logMessage(error.message);}}return;}if(!node?.closest('.sidebar')||wb.$('.sidebar').dataset.panel!=='explorer')return;const dir=node.closest('[data-drop-directory]')?.dataset.dropDirectory||'.';await manage('import',dir,{sources:paths});await localRefresh([dir]);logMessage('已复制到 '+dir);}catch(e){logMessage(e.message);}};
+ window.harnessDropFiles=async(paths,x,y)=>{try{const node=document.elementFromPoint(x,y);if(node?.closest('.editor-area,.tabbar')){const open=wb.run('file.open');if(open)for(const path of paths){try{await open(path,{external:true});}catch(error){logMessage(error.message);}}return;}if(!node?.closest('.sidebar')||wb.$('.sidebar').dataset.panel!=='explorer')return;const dir=node.closest('[data-drop-directory]')?.dataset.dropDirectory||'.';await manage('import',dir,{sources:paths});await localRefresh([dir]);logMessage('已复制到 '+dir);}catch(e){logMessage(e.message);}};
  ctx.effect(()=>delete window.harnessDropFiles);
  const manage=async(action,path,extra={})=>{const result=await api('manage',{action,path,...extra});if(['create','rename','move','copy','delete','symlink','import'].includes(action))ctx.emit('explorer.mutated',{source:'left',action,path,destination:extra.destination,root:info.root,destinationRoot:extra.destinationRoot||info.root,host:info.host});return result;};
  ctx.on('explorer.mutated',e=>{if(e.source!=='left'&&wb.$('.sidebar').dataset.panel==='explorer')(e.action==='import'?localRefresh(e.root===info.root?[e.path]:[]):e.action==='move'?localRefresh([...(e.root===info.root?[parent(e.path)]:[]),...(e.destinationRoot===info.root?[parent(e.destination)]:[])]):refresh()).catch(logMessage);});
