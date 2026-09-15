@@ -24,7 +24,7 @@ export async function rightExplorer(ctx){
  const request=(action,data={})=>{if(!info||disposed)throw Error('请先打开右侧文件夹');return api('right/explorer',{...data,root:info.root,action});};
  let localRefresh=async()=>{};
  const manage=async(operation,path,data={})=>{const result=await request('manage',{operation,path,...data});if(['create','rename','move','copy','delete','symlink','import'].includes(operation))ctx.emit('explorer.mutated',{source:'right',action:operation,path,destination:data.destination,root:info.root,destinationRoot:data.destinationRoot||info.root});return result;};
- ctx.on('explorer.mutated',e=>{if(e.source!=='right')(e.action==='move'?localRefresh([...(e.root===info?.root?[parent(e.path)]:[]),...(e.destinationRoot===info?.root?[parent(e.destination)]:[])]):render()).catch(logMessage);});
+ ctx.on('explorer.mutated',e=>{if(e.source!=='right')(e.action==='import'?localRefresh(e.root===info?.root?[e.path]:[]):e.action==='move'?localRefresh([...(e.root===info?.root?[parent(e.path)]:[]),...(e.destinationRoot===info?.root?[parent(e.destination)]:[])]):render()).catch(logMessage);});
  const persist=()=>info?api('settings/rightExplorer/write',{workspace:{root:info.root},state:{expanded:[...expanded],rootExpanded,selected,scrollTop}}).catch(logMessage):Promise.resolve();
  const schedule=()=>{clearTimeout(timer);timer=setTimeout(persist,150);};
  ctx.effect(dropTarget(host,()=>({root:info.root,host:null,side:'right'}),async dir=>{rootExpanded=true;expandAncestors(expanded,dir);await persist();await render();}));
