@@ -358,5 +358,10 @@
     "key": "cmd+down",
     "command": "editor.moveLineDown",
     "when": "editorTextFocus"
+  },
+  {
+    "key": "cmd+q",
+    "command": "markdown.togglePreview",
+    "when": "previewFileActive && !dialogFocus && !terminalFocus"
   }
 ]

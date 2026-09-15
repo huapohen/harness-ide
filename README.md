@@ -79,7 +79,7 @@ npm test
 | Command+W | 关闭当前未固定标签 |
 | Shift+Option+W / Command+Shift+W | 关闭所有未固定标签 |
 | Command+3 | 固定 / 取消固定标签 |
-| Command+D / Command+Shift+2 | Markdown 源码 / 预览切换 |
+| Command+D / Command+Shift+2 / Command+Q | Markdown、HTML 源码 / 预览切换（Command+Q 仅在此类文件且终端未聚焦时生效） |
 | Command+Shift+P | 命令面板 |
 | Command+, | 键盘快捷键设置 |
 
@@ -308,3 +308,5 @@ macOS 顶部 View → Toggle Terminal 切换底部终端的显示/隐藏，保�
 终端拖选可见区域的首尾行不会触发自动滚动；只有指针越过终端上下边界才滚动，避免最后两行横向选字时定时滚动干扰选区。
 
 退出应用时，如终端仍有任务或状态无法确认，会列出终端及原因并询问是否继续；取消保留任务，继续会先备份会话再退出。会话保存失败会显示错误，不再静默拒绝退出。
+
+- 终端输入框放行 IME 组合输入，Control+Space / Fn 不编码为终端字符；点击画布后保持输入框焦点。实体输入源切换需由 macOS 配置提供。

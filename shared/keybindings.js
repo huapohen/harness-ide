@@ -1,5 +1,6 @@
 // Shared, dependency-free validation and matching. No eval of user configuration.
 export const defaults = [
+ ['cmd+q','markdown.togglePreview','previewFileActive && !dialogFocus && !terminalFocus'],
  ['cmd+shift+2','markdown.togglePreview','!dialogFocus'],
  ['cmd+shift+e','workbench.sidebar','!dialogFocus'],
  ['cmd+alt+b','view.secondary','!dialogFocus'],
@@ -42,7 +43,7 @@ export const defaults = [
  ['shift+alt+down','editor.duplicateLine','editorTextFocus'],
  ['cmd+enter','editor.insertLineBelow','editorTextFocus'], ['cmd+shift+enter','editor.insertLineAbove','editorTextFocus'],
 ].map(([key,command,when='!dialogFocus'])=>({key,command,when}));
-export const contexts = new Set(['imageFocus','explorerFocus','findInputFocus','terminalFocus','terminalHasSelection','editorTextFocus','textInputFocus','fileTabActive','tabActive','dialogFocus','true','false']);
+export const contexts = new Set(['previewFileActive','imageFocus','explorerFocus','findInputFocus','terminalFocus','terminalHasSelection','editorTextFocus','textInputFocus','fileTabActive','tabActive','dialogFocus','true','false']);
 export function normalizeKey(text) {
  if(typeof text!=='string'||text.length>160)throw new Error('快捷键必须是字符串');
  return text.trim().toLowerCase().split(/\s+/).map(stroke=>{

@@ -1,3 +1,4 @@
+import {installTerminalIME} from '../terminal-ime.js';
 import {installSelectionBoundary} from '../terminal-selection.js';
 import {alignTerminalPixels} from '../terminal-pixel-align.js';
 import {installQuietCursor} from '../terminal-cursor.js';
@@ -21,12 +22,12 @@ export default {id:'terminal',requires:['workbench','terminal.connect','theme'],
   // Focus the dedicated input synchronously; never edit the canvas container.
   term.focus=()=>mount.querySelector('textarea')?.focus({preventScroll:true});
   const updateFont=()=>{term.options.fontSize=fonts.terminalSize;term.options.fontFamily=fonts.family+', monospace';tab.setTheme?.(ctx.get('theme').current());tab.resize();};window.addEventListener('content-font-changed',updateFont);
-  const fit=new FitAddon();term.loadAddon(fit);const socket=ctx.get('terminal.connect')(restore?.resumeId),pending=new Map();const used=new Set(wb.tabs.filter(t=>t.kind==='terminal').map(t=>t.title));let number=1;while(used.has(`t${number}`))number++;let disposed=false,exited=false,restoring=!!restore?.resumeId,disposeMouse=()=>{};
+  const fit=new FitAddon();term.loadAddon(fit);const socket=ctx.get('terminal.connect')(restore?.resumeId),pending=new Map();const used=new Set(wb.tabs.filter(t=>t.kind==='terminal').map(t=>t.title));let number=1;while(used.has(`t${number}`))number++;let disposed=false,exited=false,restoring=!!restore?.resumeId,disposeMouse=()=>{},disposeIME=()=>{};
   const tab={id:restore?.id||'terminal:'+crypto.randomUUID(),title:restore?.title||`t${number}`,kind:'terminal',icon:'›_',element,terminal:term,busy:true,
    resize:()=>{if(!restoring&&!element.hidden){try{const zoom=window.webkit?.messageHandlers.windowChrome?(Number(localStorage.getItem('ide-zoom'))||1):1;alignTerminalPixels(mount,window.devicePixelRatio*zoom);fitVisibleTerminal(term,fit,mount);}catch{}}},focus:()=>term.focus(),
-   dispose:()=>{if(disposed)return;disposed=true;clearTimeout(startupTimer);window.removeEventListener('content-font-changed',updateFont);disposeMouse();observer.disconnect();socket.close();term.dispose();owned.delete(tab);for(const {resolve,timer}of pending.values()){clearTimeout(timer);resolve({busy:!exited,reason:'终端连接已断开'});}pending.clear();}
+   dispose:()=>{if(disposed)return;disposed=true;clearTimeout(startupTimer);window.removeEventListener('content-font-changed',updateFont);disposeMouse();disposeIME();observer.disconnect();socket.close();term.dispose();owned.delete(tab);for(const {resolve,timer}of pending.values()){clearTimeout(timer);resolve({busy:!exited,reason:'终端连接已断开'});}pending.clear();}
   };
-  wb.open(tab);if(splitTarget&&wb.tabs.includes(splitTarget))wb.split(splitTarget,tab,direction);term.open(mount);mount.setAttribute('contenteditable','false');const observer=new ResizeObserver(()=>tab.resize());observer.observe(mount);owned.add(tab);
+  wb.open(tab);if(splitTarget&&wb.tabs.includes(splitTarget))wb.split(splitTarget,tab,direction);term.open(mount);mount.setAttribute('contenteditable','false');disposeIME=installTerminalIME(mount);const observer=new ResizeObserver(()=>tab.resize());observer.observe(mount);owned.add(tab);
   const hideButton=button('×','Hide Terminal',()=>wb.hideTerminal(tab),'terminal-hide');
   hideButton.addEventListener('pointerdown',e=>e.stopPropagation());element.append(hideButton);
   const earlyInput=[];
