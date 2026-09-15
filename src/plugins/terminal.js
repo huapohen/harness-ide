@@ -27,7 +27,7 @@ export default {id:'terminal',requires:['workbench','terminal.connect','theme'],
    resize:()=>{if(!restoring&&!element.hidden){try{const zoom=window.webkit?.messageHandlers.windowChrome?(Number(localStorage.getItem('ide-zoom'))||1):1;alignTerminalPixels(mount,window.devicePixelRatio*zoom);fitVisibleTerminal(term,fit,mount);}catch{}}},focus:()=>term.focus(),
    dispose:()=>{if(disposed)return;disposed=true;clearTimeout(startupTimer);window.removeEventListener('content-font-changed',updateFont);disposeMouse();disposeIME();observer.disconnect();socket.close();term.dispose();owned.delete(tab);for(const {resolve,timer}of pending.values()){clearTimeout(timer);resolve({busy:!exited,reason:'终端连接已断开'});}pending.clear();}
   };
-  wb.open(tab);if(splitTarget&&wb.tabs.includes(splitTarget))wb.split(splitTarget,tab,direction);term.open(mount);mount.setAttribute('contenteditable','false');disposeIME=installTerminalIME(mount);const observer=new ResizeObserver(()=>tab.resize());observer.observe(mount);owned.add(tab);
+  wb.open(tab);if(splitTarget&&wb.tabs.includes(splitTarget))wb.split(splitTarget,tab,direction);term.open(mount);mount.setAttribute('contenteditable','false');disposeIME=installTerminalIME(mount,data=>send({type:'data',data}));const observer=new ResizeObserver(()=>tab.resize());observer.observe(mount);owned.add(tab);
   const hideButton=button('×','Hide Terminal',()=>wb.hideTerminal(tab),'terminal-hide');
   hideButton.addEventListener('pointerdown',e=>e.stopPropagation());element.append(hideButton);
   const earlyInput=[];
