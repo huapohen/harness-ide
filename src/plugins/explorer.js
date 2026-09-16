@@ -1,3 +1,4 @@
+import {autoRefreshExplorer} from '../explorer-auto-refresh.js';
 import {copySelection,hasFileClipboard,pasteSelection,transferPlan,explorerClipboardKeys} from '../explorer-transfer.js';
 import {installTreeSticky,updateTreeSticky} from '../explorer-sticky.js';
 import {reusableRows,directoryContainer,stageRow,commitRows} from '../explorer-local-refresh.js';
@@ -21,6 +22,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
  const manage=async(action,path,extra={})=>{const result=await api('manage',{action,path,...extra});if(['create','rename','move','copy','delete','symlink','import'].includes(action))ctx.emit('explorer.mutated',{source:'left',action,path,destination:extra.destination,root:info.root,destinationRoot:extra.destinationRoot||info.root,host:info.host});return result;};
  ctx.on('explorer.mutated',e=>{if(e.source!=='left'&&wb.$('.sidebar').dataset.panel==='explorer')(e.action==='import'?localRefresh(e.root===info.root?[e.path]:[]):['move','copy'].includes(e.action)?localRefresh([...(e.root===info.root?[parent(e.path)]:[]),...(e.destinationRoot===info.root?[parent(e.destination)]:[])]):refresh()).catch(logMessage);});
  async function localRefresh(paths){for(const p of new Set(paths)){const found=directoryContainer(wb.$('#sidebar-body'),p);if(!found?.container)continue;const pending=el('div');await tree(pending,p,found.depth,reusableRows(found.container));commitRows(found.container,pending);}updateTreeSticky(wb.$('#sidebar-body'));}
+ ctx.effect(autoRefreshExplorer({host:()=>wb.$('.sidebar').dataset.panel==='explorer'&&rootExpanded?wb.$('#sidebar-body'):null,identity:()=>info,list:path=>api('list',{path}),refresh:paths=>localRefresh(paths)}));
  const refresh=async()=>{await persistTree();await wb.showPanel('explorer',{preserve:true});};
  async function newFile(name='',dir=selectedDirectory?selected:parent(selected),directory=false){rootExpanded=true;let ancestor=dir;while(ancestor!=='.'){expanded.add(ancestor);ancestor=parent(ancestor);}await refresh();inlineCreate(wb.$('#sidebar-body'),dir,directory,name,async name=>{const p=join(dir,name);await manage('create',p,{directory});await refresh();if(!directory)await wb.run('file.open')(p);});}
 

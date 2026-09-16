@@ -1,3 +1,4 @@
+import {autoRefreshExplorer} from './explorer-auto-refresh.js';
 import {copySelection,hasFileClipboard,pasteSelection,transferPlan,explorerClipboardKeys} from './explorer-transfer.js';
 import {installTreeSticky,updateTreeSticky} from './explorer-sticky.js';
 import {reusableRows,directoryContainer,stageRow,commitRows} from './explorer-local-refresh.js';
@@ -24,6 +25,7 @@ export async function rightExplorer(ctx){
  const absolute=p=>info.root+(p==='.'?'':'/'+p);
  const request=(action,data={})=>{if(!info||disposed)throw Error('请先打开右侧文件夹');return api('right/explorer',{...data,root:info.root,action});};
  let localRefresh=async()=>{};
+ ctx.effect(autoRefreshExplorer({host:()=>info&&rootExpanded&&!disposed?host:null,identity:()=>info,list:path=>request('list',{path}),refresh:paths=>localRefresh(paths)}));
  const manage=async(operation,path,data={})=>{const result=await request('manage',{operation,path,...data});if(['create','rename','move','copy','delete','symlink','import'].includes(operation))ctx.emit('explorer.mutated',{source:'right',action:operation,path,destination:data.destination,root:info.root,destinationRoot:data.destinationRoot||info.root});return result;};
  ctx.on('explorer.mutated',e=>{if(e.source!=='right')(e.action==='import'?localRefresh(e.root===info?.root?[e.path]:[]):['move','copy'].includes(e.action)?localRefresh([...(e.root===info?.root?[parent(e.path)]:[]),...(e.destinationRoot===info?.root?[parent(e.destination)]:[])]):render()).catch(logMessage);});
  const persist=()=>info?api('settings/rightExplorer/write',{workspace:{root:info.root},state:{expanded:[...expanded],rootExpanded,selected,scrollTop}}).catch(logMessage):Promise.resolve();
