@@ -139,3 +139,5 @@ Markdown 文件默认以编辑模式打开。标签右键可选择「编辑模�
 - 文件树、标签栏：Shift 点击范围选择；Command 点击逐项切换；Command+Shift 点击追加范围。
 - 文本编辑器：Tab 缩进 4 个空格，Shift+Tab 反向缩进；Shift 点击扩展文本选区，Shift+Option 拖动矩形选区。
 - Command+↑/↓ 和 Option+↑/↓：上移 / 下移当前行或选中的多行，仅在文本编辑器聚焦时生效。
+
+- 标签页及左右侧栏：Option+左键点击复制相对路径；Shift+Option+左键点击复制绝对路径。
