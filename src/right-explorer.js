@@ -102,6 +102,8 @@ export async function rightExplorer(ctx){
   try{if(rootExpanded)await branch(tree);if(version===revision&&!disposed){host.replaceChildren(body);host.scrollTop=restoreScroll;installTreeSticky(host);}}catch(e){if(version===revision)tree.append(el('p','panel-note',e.message));}finally{if(version===revision)painting=false;}
  }
  async function connect(root){contextState.invalidate();revision++;const valid=contextState.capture();const next=await api('right/explorer',{action:'info',root});if(!valid()||disposed)return;await persist();if(!valid()||disposed)return;const state=await api('settings/rightExplorer/read',{workspace:{root:next.root}});if(disposed||!valid())return;info=next;expanded=new Set(state.expanded);rootExpanded=state.rootExpanded;selected=state.selected||'.';anchor=selected;multi=new Set([selected]);scrollTop=state.scrollTop||0;await api('settings/layout/write',{secondaryRoot:next.root});await remember(next.root,true);await render();}
+ ctx.effect(wb.command('rightExplorer.refresh','右侧目录树 · 刷新',()=>localRefresh(['.',...expanded])));
+ ctx.effect(wb.command('rightExplorer.import','右侧目录树 · 导入文件',async(paths,node)=>{const row=node?.closest('.file-row'),dir=row?(row.dataset.directory==='true'?row.dataset.path:parent(row.dataset.path)):'.';await manage('import',dir,{sources:paths});await localRefresh([dir]);logMessage('已复制 '+paths.length+' 个项目到 '+dir);}));
  ctx.effect(wb.command('rightExplorer.openFolder','右侧目录树 · 选择根目录',choose));
  const saved=await api('settings/layout/read');try{if(saved.secondaryRoot!==null)await connect(saved.secondaryRoot);else host.oncontextmenu=emptyContext;}catch(e){host.replaceChildren(el('p','panel-note','右侧目录无法打开：'+e.message),button('Open Folder…','选择右侧根目录',choose));}
 }

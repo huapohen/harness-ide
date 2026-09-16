@@ -11,6 +11,7 @@ export default {id:'keybindings',requires:['api','workbench'],async activate(ctx
  function dispatch(stroke){
   if(document.querySelector('.key-capture[open]'))return false;
   if(stroke==='escape'&&prefix){resetChord();return true;}
+  if(stroke==='cmd+r'&&!document.querySelector('dialog[open]')&&!document.activeElement?.closest('input,textarea,[contenteditable="true"]')){const focused=document.activeElement;if(focused?.closest('.secondary-content')){execute({command:'rightExplorer.refresh'});return true;}if(focused?.closest('.sidebar[data-panel="explorer"]')){execute({command:'explorer.refresh'});return true;}}
   const state=context();const full=prefix?prefix+' '+stroke:stroke;
   if(prefix){const match=resolveBinding(bindings,full,state);resetChord();if(match){execute(match);return true;}logMessage('组合键没有匹配的命令');return true;}
   if(bindings.some(b=>b.key.startsWith(stroke+' ')&&evaluateWhen(b.when,state))){prefix=stroke;wb.$('#shortcut-state').textContent=`${stroke} …`;prefixTimer=setTimeout(resetChord,1800);return true;}
@@ -20,7 +21,7 @@ export default {id:'keybindings',requires:['api','workbench'],async activate(ctx
  const keydown=e=>{if(e.isComposing||e.keyCode===229)return;const key=eventKey(e);if(key&&dispatch(key)){e.preventDefault();e.stopImmediatePropagation();}};
  document.addEventListener('keydown',keydown,true);ctx.effect(()=>document.removeEventListener('keydown',keydown,true));
  window.harnessDispatchShortcut=dispatch;
- function nativeKeys(){window.webkit?.messageHandlers?.shortcuts?.postMessage([...new Set(bindings.flatMap(b=>b.key.split(' ')).concat('escape'))]);}
+ function nativeKeys(){window.webkit?.messageHandlers?.shortcuts?.postMessage([...new Set(bindings.flatMap(b=>b.key.split(' ')).concat('escape','cmd+r'))]);}
  function apply(next){record=next;if(next.error){if(lastError!==next.error){logMessage('快捷键 JSON 无效，保留上次配置：'+next.error);lastError=next.error;}}else{bindings=next.bindings;lastError='';resetChord();nativeKeys();}renderPanel();}
  async function load(){apply(await api('settings/read'));}
  async function write(text,version=record.version){const value=validateBindings(JSON.parse(text));for(const b of value)if(!wb.commands.has(b.command))throw new Error(`未知命令：${b.command}`);const next=await api('settings/write',{text,version});apply(next);return next;}
