@@ -1,3 +1,4 @@
+import {imageNavigation} from '../explorer-image-navigation.js';
 import {retargetMovedTabs} from '../explorer-move-tabs.js';
 import {autoRefreshExplorer} from '../explorer-auto-refresh.js';
 import {copySelection,hasFileClipboard,pasteSelection,transferPlan,explorerClipboardKeys} from '../explorer-transfer.js';
@@ -11,6 +12,7 @@ import {fileIcon} from '../file-icons.js';
 import {el,button,form,logMessage,menuAt} from '../ui.js';
 export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
  const api=ctx.get('api'),wb=ctx.get('workbench');let info=await api('info'),compare=null,selectionAnchor=null,selected='.',selectedDirectory=true,rootExpanded=true;const expanded=new Set(),multi=new Set();
+ const imageKeys=imageNavigation(p=>wb.run('file.open')(p,{temporary:true}));ctx.effect(()=>imageKeys.dispose());
  const persistTree=()=>api('settings/explorer/write',{workspace:{root:info.root,host:info.host},state:{expanded:[...expanded],rootExpanded}});
  const restoreTree=async()=>{const state=await api('settings/explorer/read',{workspace:{root:info.root,host:info.host}});expanded.clear();for(const p of state.expanded||[])expanded.add(p);rootExpanded=state.rootExpanded!==false;};
  await restoreTree();
@@ -86,7 +88,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
    row.onkeydown=e=>{const run=fn=>{e.preventDefault();Promise.resolve().then(fn).catch(logMessage);};if(e.key==='F2'||e.key==='Enter')run(()=>rename(p));if(e.key==='Delete')run(()=>remove(p));
     if(e.key==='ArrowRight'&&entry.directory)run(async()=>{if(!expanded.has(p))await toggle();else children.querySelector('.file-row')?.focus();});
     if(e.key==='ArrowLeft')run(async()=>{if(entry.directory&&expanded.has(p))await toggle();else container.previousElementSibling?.focus();});
-    if(e.key==='ArrowDown'||e.key==='ArrowUp')run(()=>{const rows=[...wb.$('#sidebar-body').querySelectorAll('.file-row')],i=rows.indexOf(row);const next=rows[i+(e.key==='ArrowDown'?1:-1)];if(next){markSelection(next,next.dataset.path,next.classList.contains('tree-folder'),e.metaKey,e.shiftKey);next.focus();}});
+    if(e.key==='ArrowDown'||e.key==='ArrowUp')run(async()=>{const rows=[...wb.$('#sidebar-body').querySelectorAll('.file-row')],i=rows.indexOf(row);const next=rows[i+(e.key==='ArrowDown'?1:-1)];if(next){markSelection(next,next.dataset.path,next.classList.contains('tree-folder'),e.metaKey,e.shiftKey);next.focus();await imageKeys.select(next,e);}});
    };
    row.ondblclick=e=>{e.preventDefault();e.stopPropagation();rename(p).catch(logMessage);};row.onfocus=()=>{selected=p;selectedDirectory=entry.directory;};if(entry.directory){const branch=el('div','tree-branch');row.classList.add('tree-folder');row.style.top=((depth+1)*22)+'px';branch.append(row,children);container.append(branch);}else container.append(row,children);if(entry.directory&&expanded.has(p))try{await tree(children,p,depth+1);}catch(error){children.append(el('p','panel-note','无法展开：'+error.message));}
   }
