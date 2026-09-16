@@ -40,7 +40,7 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
    for(const other of wb.tabs)if(other.path===oldPath&&!!other.external===!!external)other.acceptRename?.(destination,name);
    await wb.run('explorer.refresh');
   });
-  tab.acceptRename=(destination,name)=>{path=destination;tab.path=path;tab.title=name;if(!tab.id.startsWith('split:'))tab.id=documentIdentity(path,external,tab.previewGroup);};
+  tab.acceptRename=(destination,name,nextExternal=external)=>{external=nextExternal;tab.external=external;path=destination;tab.path=path;tab.title=name;if(!tab.id.startsWith('split:'))tab.id=documentIdentity(path,external,tab.previewGroup);};
   const imageTypes={png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',bmp:'image/bmp',svg:'image/svg+xml',ico:'image/x-icon'};
   if(imageTypes[ext]){
    const format=p=>({png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp'})[p.split('.').at(-1).toLowerCase()];

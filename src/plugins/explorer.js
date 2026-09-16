@@ -1,3 +1,4 @@
+import {retargetMovedTabs} from '../explorer-move-tabs.js';
 import {autoRefreshExplorer} from '../explorer-auto-refresh.js';
 import {copySelection,hasFileClipboard,pasteSelection,transferPlan,explorerClipboardKeys} from '../explorer-transfer.js';
 import {installTreeSticky,updateTreeSticky} from '../explorer-sticky.js';
@@ -43,9 +44,8 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
   if((target.host||null)!==(info.host||null))throw Error('暂不支持本地与 SSH 之间传输');
   const origin=info,check=()=>{if(info!==origin)throw Error('源目录已切换，请重新执行操作');};
   const same=target.root===info.root,plan=transferPlan(paths,target.dir,await target.list(),same,cut);check();
-  if(cut)for(const {path}of plan){if(!await closeAffected(path))throw Error('已取消移动');check();}
-  try{for(const {path,destination}of plan){check();await manage(cut?'move':'copy',path,{destination,...(same?{}:{destinationRoot:target.root})});}}
-  finally{await localRefresh([...paths.map(parent),...(same?[target.dir]:[])]);}
+  try{for(const {path,destination}of plan){check();await manage(cut?'move':'copy',path,{destination,...(same?{}:{destinationRoot:target.root})});if(cut)retargetMovedTabs(wb.tabs,info,origin,target,path,destination);}}
+  finally{await localRefresh([...paths.map(parent),...(same?[target.dir]:[])]);if(cut)wb.render();}
  }};
  async function paste(dir){await pasteSelection(transferTarget(dir));}
  ctx.effect(explorerClipboardKeys(()=>wb.$('.sidebar').dataset.panel==='explorer'?wb.$('#sidebar-body'):null,()=>[...multi],()=>transferTarget(selectedDirectory?selected:parent(selected)),transferSource));
