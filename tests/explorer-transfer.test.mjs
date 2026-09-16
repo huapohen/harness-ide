@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {transferPlan,copySelection,pasteSelection,hasFileClipboard} from '../src/explorer-transfer.js';
+test('batch includes all independent selections and deduplicates descendants',()=>{assert.deepEqual(transferPlan(['a','b','a/child'],'dest',[],true,true),[{path:'a',destination:'dest/a'},{path:'b',destination:'dest/b'}]);});
+test('conflicts and self-descendant destinations rejected before execution',()=>{assert.throws(()=>transferPlan(['a','b'],'dest',[{name:'b'}],true,true));assert.throws(()=>transferPlan(['a'],'a/child',[],true,true));assert.throws(()=>transferPlan(['x/a','y/a'],'dest',[],true,true));});
+test('shared clipboard handles multi-file cuts and refuses changed source roots',async()=>{let identity='one',received;const source={identity:()=>identity,transfer:async paths=>{received=paths;}};copySelection(['a','b'],true,source);await pasteSelection({});assert.deepEqual(received,['a','b']);assert.equal(hasFileClipboard(),false);copySelection(['c'],false,source);identity='two';await assert.rejects(pasteSelection({}),/源目录/);});

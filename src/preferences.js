@@ -1,4 +1,4 @@
-const keys=['office-open-mode','terminal-show-identity','editor-word-wrap','ide-zoom','harness-theme','harness-backgrounds-one-dark-pro','harness-backgrounds-light'];
+const keys=['tab-tooltip-delay','office-open-mode','terminal-show-identity','editor-word-wrap','ide-zoom','harness-theme','harness-backgrounds-one-dark-pro','harness-backgrounds-light'];
 let api,pending=Promise.resolve();
 export async function loadPreferences(call){
  api=call;const saved=(await api('settings/layout/read')).preferences||{},migration={};

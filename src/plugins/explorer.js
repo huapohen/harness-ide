@@ -1,3 +1,4 @@
+import {copySelection,hasFileClipboard,pasteSelection,transferPlan,explorerClipboardKeys} from '../explorer-transfer.js';
 import {installTreeSticky,updateTreeSticky} from '../explorer-sticky.js';
 import {reusableRows,directoryContainer,stageRow,commitRows} from '../explorer-local-refresh.js';
 import {dragSource,dropTarget} from '../explorer-drag.js';
@@ -7,18 +8,18 @@ import {selectRange} from '../../shared/range-selection.js';
 import {fileIcon} from '../file-icons.js';
 import {el,button,form,logMessage,menuAt} from '../ui.js';
 export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
- const api=ctx.get('api'),wb=ctx.get('workbench');let info=await api('info'),clipboard=null,compare=null,selectionAnchor=null,selected='.',selectedDirectory=true,rootExpanded=true;const expanded=new Set(),multi=new Set();
+ const api=ctx.get('api'),wb=ctx.get('workbench');let info=await api('info'),compare=null,selectionAnchor=null,selected='.',selectedDirectory=true,rootExpanded=true;const expanded=new Set(),multi=new Set();
  const persistTree=()=>api('settings/explorer/write',{workspace:{root:info.root,host:info.host},state:{expanded:[...expanded],rootExpanded}});
  const restoreTree=async()=>{const state=await api('settings/explorer/read',{workspace:{root:info.root,host:info.host}});expanded.clear();for(const p of state.expanded||[])expanded.add(p);rootExpanded=state.rootExpanded!==false;};
  await restoreTree();
  const parent=p=>p.includes('/')?p.slice(0,p.lastIndexOf('/')):'.';
  const join=(p,n)=>p==='.'?n:p+'/'+n;
  const update=()=>{wb.$('#workspace-title').textContent=`${info.host?info.host+' / ':''}${info.name}`;ctx.emit('workspace.changed',info);};
- ctx.provide('workspace',{info:()=>info,async connect(root,host,{restoring=false}={}){if(wb.tabs.some(t=>t.pinned))throw Error('Unpin tabs before switching workspace');await wb.session?.flush();if(!await wb.closeAll())return;info=await api('connect',{root,host});clipboard=compare=null;selected='.';selectionAnchor=null;selectedDirectory=true;rootExpanded=true;expanded.clear();multi.clear();await restoreTree();update();await wb.showPanel('explorer');if(!restoring&&wb.commands.has('terminal.new'))await wb.run('terminal.new');}});
+ ctx.provide('workspace',{info:()=>info,async connect(root,host,{restoring=false}={}){if(wb.tabs.some(t=>t.pinned))throw Error('Unpin tabs before switching workspace');await wb.session?.flush();if(!await wb.closeAll())return;info=await api('connect',{root,host});compare=null;selected='.';selectionAnchor=null;selectedDirectory=true;rootExpanded=true;expanded.clear();multi.clear();await restoreTree();update();await wb.showPanel('explorer');if(!restoring&&wb.commands.has('terminal.new'))await wb.run('terminal.new');}});
  window.harnessDropFiles=async(paths,x,y)=>{try{const node=document.elementFromPoint(x,y);if(node?.closest('.editor-area,.tabbar')){const open=wb.run('file.open');if(open)for(const path of paths){try{await open(path,{external:true});}catch(error){logMessage(error.message);}}return;}if(!node?.closest('.sidebar')||wb.$('.sidebar').dataset.panel!=='explorer')return;const dir=node.closest('[data-drop-directory]')?.dataset.dropDirectory||'.';await manage('import',dir,{sources:paths});await localRefresh([dir]);logMessage('已复制到 '+dir);}catch(e){logMessage(e.message);window.alert('拖入失败：'+e.message);}};
  ctx.effect(()=>delete window.harnessDropFiles);
  const manage=async(action,path,extra={})=>{const result=await api('manage',{action,path,...extra});if(['create','rename','move','copy','delete','symlink','import'].includes(action))ctx.emit('explorer.mutated',{source:'left',action,path,destination:extra.destination,root:info.root,destinationRoot:extra.destinationRoot||info.root,host:info.host});return result;};
- ctx.on('explorer.mutated',e=>{if(e.source!=='left'&&wb.$('.sidebar').dataset.panel==='explorer')(e.action==='import'?localRefresh(e.root===info.root?[e.path]:[]):e.action==='move'?localRefresh([...(e.root===info.root?[parent(e.path)]:[]),...(e.destinationRoot===info.root?[parent(e.destination)]:[])]):refresh()).catch(logMessage);});
+ ctx.on('explorer.mutated',e=>{if(e.source!=='left'&&wb.$('.sidebar').dataset.panel==='explorer')(e.action==='import'?localRefresh(e.root===info.root?[e.path]:[]):['move','copy'].includes(e.action)?localRefresh([...(e.root===info.root?[parent(e.path)]:[]),...(e.destinationRoot===info.root?[parent(e.destination)]:[])]):refresh()).catch(logMessage);});
  async function localRefresh(paths){for(const p of new Set(paths)){const found=directoryContainer(wb.$('#sidebar-body'),p);if(!found?.container)continue;const pending=el('div');await tree(pending,p,found.depth,reusableRows(found.container));commitRows(found.container,pending);}updateTreeSticky(wb.$('#sidebar-body'));}
  const refresh=async()=>{await persistTree();await wb.showPanel('explorer',{preserve:true});};
  async function newFile(name='',dir=selectedDirectory?selected:parent(selected),directory=false){rootExpanded=true;let ancestor=dir;while(ancestor!=='.'){expanded.add(ancestor);ancestor=parent(ancestor);}await refresh();inlineCreate(wb.$('#sidebar-body'),dir,directory,name,async name=>{const p=join(dir,name);await manage('create',p,{directory});await refresh();if(!directory)await wb.run('file.open')(p);});}
@@ -34,7 +35,19 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
  }
  async function remove(p){if(!await closeAffected(p))return;await manage('delete',p);for(const x of [...multi])if(x===p||x.startsWith(p+'/'))multi.delete(x);await refresh();}
  async function copyText(text){const handler=window.webkit?.messageHandlers.clipboard;if(handler)handler.postMessage({id:crypto.randomUUID(),action:'write',text});else await navigator.clipboard.writeText(text);}
- async function paste(dir){if(!clipboard)return;const data=await form('粘贴到 '+dir,[{name:'name',label:'名称',value:clipboard.path.split('/').at(-1)}]);if(!data)return;if(clipboard.cut&&!await closeAffected(clipboard.path))return;await manage(clipboard.cut?'move':'copy',clipboard.path,{destination:join(dir,data.name)});if(clipboard.cut)clipboard=null;await refresh();}
+ const picked=p=>multi.has(p)?[...multi]:[p];
+ const transferTarget=dir=>({dir,root:info.root,host:info.host,list:()=>api('list',{path:dir})});
+ const transferSource={identity:()=>JSON.stringify([info?.root,info?.host]),async transfer(paths,target,cut){
+  if((target.host||null)!==(info.host||null))throw Error('暂不支持本地与 SSH 之间传输');
+  const origin=info,check=()=>{if(info!==origin)throw Error('源目录已切换，请重新执行操作');};
+  const same=target.root===info.root,plan=transferPlan(paths,target.dir,await target.list(),same,cut);check();
+  if(cut)for(const {path}of plan){if(!await closeAffected(path))throw Error('已取消移动');check();}
+  try{for(const {path,destination}of plan){check();await manage(cut?'move':'copy',path,{destination,...(same?{}:{destinationRoot:target.root})});}}
+  finally{await localRefresh([...paths.map(parent),...(same?[target.dir]:[])]);}
+ }};
+ async function paste(dir){await pasteSelection(transferTarget(dir));}
+ ctx.effect(explorerClipboardKeys(()=>wb.$('.sidebar').dataset.panel==='explorer'?wb.$('#sidebar-body'):null,()=>[...multi],()=>transferTarget(selectedDirectory?selected:parent(selected)),transferSource));
+
  async function output(title,p,action,extra={}){const result=await manage(action,p,extra);const element=el('section','tab-content diff-view');element.append(el('h2','',title),el('pre','',result.output||'没有记录或差异'));wb.open({id:crypto.randomUUID(),title,kind:'file',element});}
  async function openSide(p){const previous=wb.active();await wb.run('file.open')(p);const t=wb.active();if(previous&&previous!==t)wb.split(previous,t,'vertical');}
  async function openWith(p){const d=await form('打开方式',[{name:'mode',label:'输入 source（源码）或 preview（预览）',value:'source'}]);if(!d)return;if(!['source','preview'].includes(d.mode))throw Error('请输入 source 或 preview');await wb.run('file.open')(p);wb.active()?.showMode?.(d.mode);}
@@ -47,8 +60,8 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
  rows.push(item('Open in Integrated Terminal',()=>terminal(dir)),null);
  if(!info.host&&window.webkit?.messageHandlers.windowChrome)rows.push(item('Share…',async()=>{const {path}=await manage('absolute',p);window.webkit.messageHandlers.windowChrome.postMessage({action:'share',path});}),null);
  if(!directory)rows.push(item(compare?'Compare with Selected':'Select for Compare',()=>{if(compare){const other=compare;compare=null;return output('Compare: '+other+' ↔ '+p,p,'compare',{other});}compare=p;}),item('Open Timeline',()=>wb.run('history.open',p)),null);
- if(p!=='.')rows.push(item('Cut',()=>{clipboard={path:p,cut:true};}),item('Copy',()=>{clipboard={path:p,cut:false};}));
- rows.push(item('Paste',()=>paste(dir),!clipboard),null,item('Copy Path',async()=>copyText((await Promise.all(([...multi].length?[...multi]:[p]).map(async x=>(await manage('absolute',x)).path))).join('\n'))),item('Copy Relative Path',()=>copyText([...multi].join('\n')||p)));
+ if(p!=='.')rows.push(item('Cut',()=>{copySelection(picked(p),true,transferSource);}),item('Copy',()=>{copySelection(picked(p),false,transferSource);}));
+ rows.push(item('Paste',()=>paste(dir),!hasFileClipboard()),null,item('Copy Path',async()=>copyText((await Promise.all(([...multi].length?[...multi]:[p]).map(async x=>(await manage('absolute',x)).path))).join('\n'))),item('Copy Relative Path',()=>copyText([...multi].join('\n')||p)));
  if(p!=='.')rows.push(null,item('Rename…',()=>rename(p)),item('Delete',async()=>{for(const x of [...multi].filter(x=>![...multi].some(parent=>x!==parent&&x.startsWith(parent+'/'))))await remove(x);}));
  rows.push(null,item('Refresh',refresh),item('Collapse Folders in Explorer',()=>collapse()));menuAt(e.clientX,e.clientY,rows);
  }
@@ -62,7 +75,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
    const drawArrow=()=>{arrow.className='tree-chevron'+(entry.directory?' codicon-'+(expanded.has(p)?'chevron-down':'chevron-right'):'');if(entry.directory)row.setAttribute('aria-expanded',String(expanded.has(p)));};
    let toggleRevision=0;
    const toggle=async()=>{const request=++toggleRevision;if(expanded.has(p)){expanded.delete(p);children.replaceChildren();drawArrow();await persistTree();return;}expanded.add(p);drawArrow();const pending=el('div');try{await tree(pending,p,depth+1);if(request!==toggleRevision)return;children.replaceChildren(...pending.childNodes);}catch(e){if(request!==toggleRevision)return;expanded.delete(p);drawArrow();throw e;}await persistTree();};
-   dragSource(row,async target=>{if((target.host||null)!==(info.host||null))throw Error('暂不支持本地与 SSH 之间拖动');const destination=join(target.dir,p.split('/').at(-1));if(target.root===info.root&&destination===p)return false;if(!await closeAffected(p))return false;await manage('move',p,{destination,...(target.root===info.root?{}:{destinationRoot:target.root})});await localRefresh([parent(p),...(target.root===info.root?[target.dir]:[])]);return false;});
+   dragSource(row,async target=>{await transferSource.transfer(picked(p),{...target,list:()=>target.root===info.root?api('list',{path:target.dir}):api('right/explorer',{action:'list',root:target.root,path:target.dir})},true);return false;});
    row.onmousedown=e=>{if(e.metaKey||e.shiftKey)e.preventDefault();};
    row.onclick=e=>{Promise.resolve().then(async()=>{markSelection(row,p,entry.directory,e.metaKey,e.shiftKey&&!e.altKey);if(e.altKey)await copyText(e.shiftKey?p:(await manage('absolute',p)).path);if(e.metaKey||(e.shiftKey&&!e.altKey)){if(!row.querySelector('input'))row.focus();return;}if(entry.directory)await toggle();else{await wb.run('file.open')(p,{temporary:true});if(!row.querySelector('input'))row.focus();}}).catch(logMessage);};
    drawArrow();if(entry.directory)row.append(arrow);
@@ -71,7 +84,7 @@ export default {id:'explorer',requires:['api','workbench'],async activate(ctx){
    row.onkeydown=e=>{const run=fn=>{e.preventDefault();Promise.resolve().then(fn).catch(logMessage);};if(e.key==='F2'||e.key==='Enter')run(()=>rename(p));if(e.key==='Delete')run(()=>remove(p));
     if(e.key==='ArrowRight'&&entry.directory)run(async()=>{if(!expanded.has(p))await toggle();else children.querySelector('.file-row')?.focus();});
     if(e.key==='ArrowLeft')run(async()=>{if(entry.directory&&expanded.has(p))await toggle();else container.previousElementSibling?.focus();});
-    if(e.key==='ArrowDown'||e.key==='ArrowUp')run(()=>{const rows=[...wb.$('#sidebar-body').querySelectorAll('.file-row')],i=rows.indexOf(row);rows[i+(e.key==='ArrowDown'?1:-1)]?.focus();});
+    if(e.key==='ArrowDown'||e.key==='ArrowUp')run(()=>{const rows=[...wb.$('#sidebar-body').querySelectorAll('.file-row')],i=rows.indexOf(row);const next=rows[i+(e.key==='ArrowDown'?1:-1)];if(next){markSelection(next,next.dataset.path,next.classList.contains('tree-folder'),e.metaKey,e.shiftKey);next.focus();}});
    };
    row.ondblclick=e=>{e.preventDefault();e.stopPropagation();rename(p).catch(logMessage);};row.onfocus=()=>{selected=p;selectedDirectory=entry.directory;};if(entry.directory){const branch=el('div','tree-branch');row.classList.add('tree-folder');row.style.top=((depth+1)*22)+'px';branch.append(row,children);container.append(branch);}else container.append(row,children);if(entry.directory&&expanded.has(p))try{await tree(children,p,depth+1);}catch(error){children.append(el('p','panel-note','无法展开：'+error.message));}
   }

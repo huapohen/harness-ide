@@ -1,3 +1,4 @@
+import {tabTooltip} from '../tab-tooltip.js';
 import {savePreference} from '../preferences.js';
 import {replaceSidebarBody} from '../sidebar-panel.js';
 import {topTabLayout} from '../top-tab-layout.js';
@@ -32,7 +33,7 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
   for(const t of tabs){
    const b=el('div',`tab ${active===t?'active':''} ${docked===t?'docked':''} ${t.pinned?'pinned':''}`);b.role='tab';b.tabIndex=0;b.setAttribute('aria-selected',String(active===t||multiTabs.has(t)));b.draggable=false;b.dataset.tabId=t.id;b.classList.toggle('multi-selected',multiTabs.size>1&&multiTabs.has(t));
    b.append(el('span','tab-label',t.title));
-   b.title=t.title+(t.pinned?' (Pinned)':'');
+   tabTooltip(b,t.title+(t.pinned?' (Pinned)':''));
    const tabActionLabel=()=>t.pinned?'♥':t.dirty?'●':'×';
    const closeButton=button(tabActionLabel(),(t.pinned?'取消固定 ':'关闭 ')+t.title+(t.dirty?'（未保存）':''),()=>{},'close-tab');closeButton.classList.toggle('is-dirty',!!t.dirty&&!t.pinned);closeButton.classList.toggle('is-pinned',!!t.pinned);closeButton.onmouseenter=()=>{if(!t.pinned)closeButton.textContent='×';};closeButton.onmouseleave=()=>{closeButton.textContent=tabActionLabel();};closeButton.onclick=e=>{e.stopPropagation();if(t.pinned)pin(t);else close(t).catch(logMessage);};b.append(closeButton);
    b.ondblclick=e=>{if(!e.target.closest('button,input')){e.preventDefault();t.pinned=!t.pinned;t.temporary=false;render();}};
