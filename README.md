@@ -335,3 +335,5 @@ macOS 顶部 View → Toggle Terminal 切换底部终端的显示/隐藏，保�
 - 终端 Shift+Tab 发送标准反向 Tab 序列 ESC [ Z，修正与普通 Tab 混同的问题，支持 herdr 内 omp 的思考强度切换。
 
 - 终端最大化覆盖文件区时，点击文件标签会隐藏覆盖层并显示文件；终端会话保持运行，Command+A 可再次唤回。
+
+- 应用图标第一版：融合本机 OpenInc 与 Ghostty 自定义火箭图标的星空背景和红白机身，保留完整火箭头并调整尾焰方向；源图位于 native/assets/AppIcon-v1.png，构建使用 AppIcon.icns。
