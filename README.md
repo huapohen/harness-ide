@@ -336,4 +336,4 @@ macOS 顶部 View → Toggle Terminal 切换底部终端的显示/隐藏，保�
 
 - 终端最大化覆盖文件区时，点击文件标签会隐藏覆盖层并显示文件；终端会话保持运行，Command+A 可再次唤回。
 
-- 应用图标第二版：融合本机 OpenInc 与 Ghostty 自定义火箭图标的星空背景和红白机身，保留完整火箭头并调整尾焰方向；源图位于 native/assets/AppIcon-v2.png（按机身中轴调整尾焰），构建使用 AppIcon.icns。
+- 应用图标采用用户选定的第四版：融合本机 OpenInc 与 Ghostty 自定义火箭图标的星空背景和红白机身，保留完整火箭头并调整尾焰方向；源图位于 native/assets/AppIcon-v4.png（蓝紫光晕、轻微金属质感及均衡喷射尾焰），构建使用 AppIcon.icns。
