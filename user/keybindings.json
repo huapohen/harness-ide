@@ -156,8 +156,8 @@
   },
   {
     "key": "cmd+d",
-    "command": "markdown.togglePreview",
-    "when": "!dialogFocus"
+    "command": "files.revealFocusedFinder",
+    "when": "!dialogFocus && !terminalFocus"
   },
   {
     "key": "cmd+shift+z",

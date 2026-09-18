@@ -24,7 +24,7 @@ export const defaults = [
  ['ctrl+z','edit.undo','textInputFocus || imageFocus'],['ctrl+shift+z','edit.redo','textInputFocus || imageFocus'],['ctrl+s','files.save'],['alt+shift+w','tabs.closeAll'],
  ['cmd+backspace','explorer.delete','explorerFocus && !dialogFocus'],
  ['cmd+-','workbench.zoomOut','true'], ['cmd+=','workbench.zoomIn','true'], ['cmd+shift+=','workbench.zoomIn','true'], ['cmd+0','workbench.zoomReset','true'],
- ['cmd+n','file.newText'], ['cmd+o','file.openDialog'], ['cmd+e','terminal.new'], ['cmd+d','markdown.togglePreview'], ['cmd+w','tabs.close'], ['cmd+shift+w','tabs.closeAll'],
+ ['cmd+n','file.newText'], ['cmd+o','file.openDialog'], ['cmd+e','terminal.new'], ['cmd+d','files.revealFocusedFinder','!dialogFocus && !terminalFocus'], ['cmd+w','tabs.close'], ['cmd+shift+w','tabs.closeAll'],
  ['cmd+3','tabs.pin'], ['cmd+1','tabs.previous'], ['cmd+2','tabs.next'],
  ['cmd+s','files.save'], ['cmd+shift+s','files.saveAll'],
  ['cmd+,','settings.keybindings'], ['cmd+k cmd+s','settings.keybindings'],

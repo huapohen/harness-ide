@@ -79,7 +79,7 @@ npm test
 | Command+W | 关闭当前未固定标签 |
 | Shift+Option+W / Command+Shift+W | 关闭所有未固定标签 |
 | Command+3 | 固定 / 取消固定标签 |
-| Command+D / Command+Shift+2 / Command+Q | Markdown、HTML 源码 / 预览切换（Command+Q 仅在此类文件且终端未聚焦时生效） |
+| Command+Shift+2 / Command+Q | Markdown、HTML 源码 / 预览切换（Command+Q 仅在此类文件且终端未聚焦时生效） |
 | Command+Shift+P | 命令面板 |
 | Command+, | 键盘快捷键设置 |
 
@@ -337,3 +337,5 @@ macOS 顶部 View → Toggle Terminal 切换底部终端的显示/隐藏，保�
 - 终端最大化覆盖文件区时，点击文件标签会隐藏覆盖层并显示文件；终端会话保持运行，Command+A 可再次唤回。
 
 - 应用图标采用用户选定的第十二版原图：无星球的蓝紫星云背景、均匀银色金属机身与喷射尾焰；原始图位于 native/assets/AppIcon-v12.png（1254×1254），Dock 适配图为 native/assets/AppIcon-v12-dock.png：整体缩小约 15%，可见宽度占画布约 80.5%，与本机 Chrome 图标边距对齐；构建使用 AppIcon.icns，并包含 macOS 所需的多尺寸图标。
+
+Command+D 在 Finder 中显示当前项目：左右侧栏使用当前选中的文件或文件夹，文件区使用当前文件；终端和对话框内不触发。预览切换仍可使用 Command+Q 或 Command+Shift+2。

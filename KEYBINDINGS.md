@@ -14,7 +14,7 @@
 | Shift+Option+W / Command+Shift+W | 关闭所有未固定标签，保留 pin 标签 |
 | Command+3 | 固定 / 取消固定当前标签 |
 | Command+1 / Command+2 | 循环切换前一个 / 后一个标签 |
-| Command+D / Command+Shift+2 | Markdown 源码 / 预览切换 |
+| Command+Shift+2 / Command+Q | Markdown 源码 / 预览切换 |
 | Command+Backspace | 将目录树中选中的文件或文件夹直接移到废纸篓，不弹删除确认（目录树获得焦点时） |
 
 关闭未保存文件时提供保存、不保存、取消；有运行任务的终端受到关闭保护。所有关闭入口（快捷键、右键 Close、Close Others、Close All）均保护固定标签，必须先 Unpin。固定后关闭按钮的位置显示爱心，点击爱心取消固定。
@@ -141,3 +141,5 @@ Markdown 文件默认以编辑模式打开。标签右键可选择「编辑模�
 - Command+↑/↓ 和 Option+↑/↓：上移 / 下移当前行或选中的多行，仅在文本编辑器聚焦时生效。
 
 - 标签页及左右侧栏：Option+左键点击复制相对路径；Shift+Option+左键点击复制绝对路径。
+
+Command+D：在 Finder 中显示左右侧栏所选文件/文件夹，或文件区当前文件。
