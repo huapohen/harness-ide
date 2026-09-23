@@ -364,3 +364,6 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 .search-results::-webkit-scrollbar-thumb{background:var(--selected);border:1px solid transparent;background-clip:padding-box;border-radius:5px}
 .search-results::-webkit-scrollbar-thumb:hover{background:var(--muted);background-clip:padding-box}
 .tab-name-tooltip{position:fixed;z-index:10000;pointer-events:none;max-width:calc(100vw - 8px);overflow-wrap:anywhere;padding:5px 8px;border:1px solid var(--border);border-radius:4px;background:var(--sidebar);color:var(--fg);box-shadow:0 2px 8px var(--shadow);font-size:12px}
+/* Canvas text is selected by the terminal itself. WebKit's native canvas
+   selection otherwise paints the entire terminal on a secondary click. */
+.terminal-mount canvas{-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
