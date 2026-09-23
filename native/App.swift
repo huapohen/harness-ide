@@ -168,6 +168,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
             (NSApplication.shared as? HarnessApplication)?.shortcutKeys = Set(keys)
         }
         if message.name == "clipboard", let body = message.body as? [String:Any], let id = body["id"] as? String, let action = body["action"] as? String {
+            if action == "copyPdfSelection" {
+                web.evaluateJavaScript("document.activeElement?.matches('iframe[data-pdf-auto-copy]') === true") { selectedPDF, _ in
+                    guard selectedPDF as? Bool == true, self.window.isKeyWindow else { return }
+                    NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)
+                }
+                return
+            }
             var value = ""
             if action == "read" { value = NSPasteboard.general.string(forType: .string) ?? "" }
             if action == "write", let text = body["text"] as? String { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(text, forType: .string) }

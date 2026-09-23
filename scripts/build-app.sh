@@ -64,7 +64,7 @@ cat > "$bundle/Contents/Info.plist" <<'PLIST'
 <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 </dict></plist>
 PLIST
-swiftc native/App.swift -o "$bundle/Contents/MacOS/HarnessIDE" -framework Cocoa -framework WebKit
+swiftc -target "$arch-apple-macosx13.0" native/App.swift -o "$bundle/Contents/MacOS/HarnessIDE" -framework Cocoa -framework WebKit
 codesign --force --sign - "$resources/runtime/node"
 codesign --force --sign - "$resources/app/node_modules/node-pty/prebuilds/darwin-$pty_arch/pty.node"
 codesign --force --sign - "$resources/app/node_modules/node-pty/prebuilds/darwin-$pty_arch/spawn-helper"
