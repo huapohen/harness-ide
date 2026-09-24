@@ -2,14 +2,20 @@
 // Adapt its public render interfaces; the WASM state and PTY remain untouched.
 // RGB values matching the original palette follow the theme (including explicit
 // true-color values that happen to equal a palette entry).
-export function installThemeAdapter(term,initial){
- const renderer=term.renderer,render=renderer.render.bind(renderer);let foreground=new Map(),background=new Map(),dirty=false,lastFocused,lastCursorState,cursorPositioned=false;
+export function installThemeAdapter(term,initial,{flatOmp=()=>false}={}){
+ const renderer=term.renderer,render=renderer.render.bind(renderer);let foreground=new Map(),background=new Map(),dirty=false,lastFocused,lastCursorState,cursorPositioned=false,applicationColors=false,current=initial;
  const rgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
  const key=(c,p)=>`${c[p+'_r']},${c[p+'_g']},${c[p+'_b']}`;
- const mapLine=line=>line?.map(cell=>{const fg=foreground.get(key(cell,'fg')),bg=background.get(key(cell,'bg'));if(!fg&&!bg)return cell;return {...cell,...(fg?{fg_r:fg[0],fg_g:fg[1],fg_b:fg[2]}:{}),...(bg?{bg_r:bg[0],bg_g:bg[1],bg_b:bg[2]}:{})};});
+ const mapLine=line=>line?.map(cell=>{const source=key(cell,'fg'),bg=background.get(key(cell,'bg'));let fg=foreground.get(source);
+  // OMP titanium-flat uses terminal-default text, but recent OMP resolves it
+  // to near-white. Its deliberately hidden border is a fixed dark color.
+  // Recognize both truecolor and xterm-256 equivalents, only in OMP/herdr.
+  if(applicationColors){if(['229,229,231','228,228,228'].includes(source))fg=rgb(current.foreground);
+   else if(cell.codepoint>=0x2500&&cell.codepoint<=0x257f&&['36,39,46','38,38,38','29,31,35','28,28,28'].includes(source))return {...cell,codepoint:32,...(bg?{bg_r:bg[0],bg_g:bg[1],bg_b:bg[2]}:{})};}
+  if(!fg&&!bg)return cell;return {...cell,...(fg?{fg_r:fg[0],fg_g:fg[1],fg_b:fg[2]}:{}),...(bg?{bg_r:bg[0],bg_g:bg[1],bg_b:bg[2]}:{})};});
  const wrap= (target,method)=>new Proxy(target,{get(obj,prop){if(prop==='getCursor'&&method==='getLine')return ()=>{const cursor=obj.getCursor();if(cursor.x>0||cursor.y>0)cursorPositioned=true;return {...cursor,visible:cursor.visible&&term.startupReady!==false&&cursorPositioned&&(typeof document==='undefined'||term.element.contains(document.activeElement))};};if(prop===method)return i=>mapLine(obj[method](i));const value=Reflect.get(obj,prop);return typeof value==='function'?value.bind(obj):value;}});
- renderer.render=(buffer,force,viewport,scrollback,opacity)=>{const focused=typeof document==='undefined'||term.element.contains(document.activeElement);const focusChanged=focused!==lastFocused;lastFocused=focused;const view=wrap(buffer,'getLine'),cursor=typeof buffer.getCursor==='function'?view.getCursor():null,cursorState=cursor?`${cursor.visible}:${cursorPositioned}`:'';const cursorChanged=cursorState!==lastCursorState;lastCursorState=cursorState;render(view,force||dirty||focusChanged||cursorChanged,viewport,scrollback?wrap(scrollback,'getScrollbackLine'):undefined,opacity);dirty=false;};
- return colors=>{const palette=new Map();for(const name of Object.keys(initial)){if(['cursor','foreground','background'].includes(name))continue;if(colors[name])palette.set(rgb(initial[name]).join(','),rgb(colors[name]));}
+ renderer.render=(buffer,force,viewport,scrollback,opacity)=>{const active=!!flatOmp();if(active!==applicationColors){applicationColors=active;dirty=true;}const focused=typeof document==='undefined'||term.element.contains(document.activeElement);const focusChanged=focused!==lastFocused;lastFocused=focused;const view=wrap(buffer,'getLine'),cursor=typeof buffer.getCursor==='function'?view.getCursor():null,cursorState=cursor?`${cursor.visible}:${cursorPositioned}`:'';const cursorChanged=cursorState!==lastCursorState;lastCursorState=cursorState;render(view,force||dirty||focusChanged||cursorChanged,viewport,scrollback?wrap(scrollback,'getScrollbackLine'):undefined,opacity);dirty=false;};
+ return colors=>{current=colors;const palette=new Map();for(const name of Object.keys(initial)){if(['cursor','foreground','background'].includes(name))continue;if(colors[name])palette.set(rgb(initial[name]).join(','),rgb(colors[name]));}
   // One Dark Pro shares default colors with ANSI black/white. Defaults must win
   // separately for foreground and background, rather than overwrite each other.
   foreground=new Map(palette);background=new Map(palette);

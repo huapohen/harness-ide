@@ -25,3 +25,18 @@ test('shell startup cursor stays hidden even after preliminary cursor movement',
  term.renderer.render(buffer);assert.equal(shown,false);
  term.startupReady=true;term.renderer.render(buffer);assert.equal(shown,true);assert.equal(forced,true);
 });
+
+test('OMP flat text follows both themes and flat borders disappear without hiding herdr blue borders',()=>{
+ let cells,active=false,forced;const term={element:{style:{}},renderer:{render(buffer,force){cells=buffer.getLine(0);forced=force;},setTheme(){}}};
+ const dark={background:'#282c34',foreground:'#abb2bf'},light={background:'#ffffff',foreground:'#383a42'};
+ const apply=installThemeAdapter(term,light,{flatOmp:()=>active});
+ const cell=(fg,codepoint=0x2500)=>({codepoint,fg_r:fg[0],fg_g:fg[1],fg_b:fg[2],bg_r:255,bg_g:255,bg_b:255});
+ const original=[cell([228,228,228],0x4e2d),cell([229,229,231]),cell([38,38,38]),cell([36,39,46]),cell([137,180,250]),cell([28,28,28],0x2503),cell([29,31,35],0x2503),cell([38,38,38],0x61)];
+ const buffer={getLine:()=>original};
+ term.renderer.render(buffer,false);assert.deepEqual(cells,original);
+ active=true;term.renderer.render(buffer,false);assert.equal(forced,true);
+ assert.equal(cells[0].fg_r,56);assert.equal(cells[1].fg_r,56);assert.equal(cells[2].codepoint,32);assert.equal(cells[3].codepoint,32);assert.equal(cells[5].codepoint,32);assert.equal(cells[6].codepoint,32);assert.equal(cells[7].codepoint,0x61);assert.equal(cells[4].fg_r,137);
+ apply(dark);term.renderer.render(buffer,false);assert.equal(cells[0].fg_r,171);assert.equal(cells[2].codepoint,32);assert.equal(cells[2].bg_r,40);assert.equal(cells[4].fg_r,137);
+ apply(light);term.renderer.render(buffer,false);assert.equal(cells[0].fg_r,56);assert.equal(cells[2].codepoint,32);
+ active=false;term.renderer.render(buffer,false);assert.deepEqual(cells,original);assert.equal(original[0].fg_r,228);
+});

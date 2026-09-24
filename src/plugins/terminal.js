@@ -61,7 +61,7 @@ export default {id:'terminal',requires:['workbench','terminal.connect','theme'],
    const dismiss=event=>{if(!menu.contains(event.target)){menu.remove();document.removeEventListener('pointerdown',dismiss);}};document.addEventListener('pointerdown',dismiss);
   },true);
   installSelectionBoundary(term);installQuietCursor(term.renderer);
-  const setTheme=installThemeAdapter(term,ctx.get('theme').current().terminal);tab.setTheme=theme=>setTheme({...theme.terminal,cursor:fonts.cursorColor});requestAnimationFrame(()=>{tab.resize();term.focus();});return tab;
+  const setTheme=installThemeAdapter(term,ctx.get('theme').current().terminal,{flatOmp:()=>/\b(?:omp|herdr)\b/i.test(tab.busyReason||'')});tab.setTheme=theme=>setTheme({...theme.terminal,cursor:fonts.cursorColor});requestAnimationFrame(()=>{tab.resize();term.focus();});return tab;
  }
  for(const [id,direction]of [['terminal.splitVertical','vertical'],['terminal.splitHorizontal','horizontal']])ctx.effect(wb.command(id,direction==='vertical'?'终端 · 左右切分':'终端 · 上下切分',()=>{const t=wb.current();if(t?.kind!=='terminal'){logMessage('请先选择一个终端');return;}return create(t,direction);}));
  ctx.effect(wb.command('terminal.restore','Terminal restore',state=>create(null,null,state)));
