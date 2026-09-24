@@ -11,3 +11,20 @@ test('late failed HTML request cannot cover a newer successful page with an erro
  }finally{Object.assign(globalThis,old);}
 });
 test('disposing HTML releases its bridge and ignores late navigation',async()=>{const old={document:globalThis.document,window:globalThis.window};let receive,viewer,resolveRead,reads=0;class Node{constructor(tag){this.tag=tag;this.children=[];this.isConnected=true;this.contentWindow={};}setAttribute(){}append(...n){this.children.push(...n);}querySelector(){return null;}}globalThis.document={createElement:tag=>new Node(tag)};globalThis.window={addEventListener:(n,f)=>receive=f,removeEventListener(){}};try{plugin.activate({get:n=>n==='api'?()=>{reads++;return new Promise(r=>resolveRead=r);} :{register:(ext,fn)=>{viewer=fn;return()=>{};}},effect(){}});const container=new Node('div');viewer(container,'Start',{path:'index.html'});const frame=container.children.find(n=>n.tag==='iframe'),id=frame.srcdoc.match(/harnessHTML:"([^"]+)"/)[1],event={source:frame.contentWindow,data:{harnessHTML:id,href:'next.html'}};receive(event);container.disposePreview();resolveRead({data:Buffer.from('Late page').toString('base64')});await new Promise(r=>setImmediate(r));assert.equal(frame.srcdoc,'');receive(event);assert.equal(reads,1);}finally{Object.assign(globalThis,old);}});
+
+test('HTML selection copy accepts only nonempty messages from the focused registered frame',()=>{
+ const old={document:globalThis.document,window:globalThis.window};let receive,viewer;const copies=[];
+ class Node{constructor(tag){this.tag=tag;this.children=[];this.isConnected=true;this.contentWindow={};}setAttribute(){}append(...n){this.children.push(...n);}querySelector(){return null;}}
+ globalThis.document={createElement:tag=>new Node(tag)};
+ globalThis.window={addEventListener:(n,f)=>receive=f,removeEventListener(){},webkit:{messageHandlers:{clipboard:{postMessage:m=>copies.push(m.text)}}}};
+ try{
+  plugin.activate({get:n=>n==='api'?()=>{}:{register:(ext,fn)=>{viewer=fn;return()=>{};}},effect(){}});
+  const container=new Node('div');viewer(container,'Text',{path:'index.html'});
+  const frame=container.children.find(n=>n.tag==='iframe'),id=frame.srcdoc.match(/harnessHTML:"([^"]+)"/)[1];
+  const send=(source=frame.contentWindow,selection='Selected text',harnessHTML=id)=>receive({source,data:{harnessHTML,selection}});
+  send();assert.equal(copies.length,0);
+  document.activeElement=frame;send({});send(frame.contentWindow,'','wrong');send(frame.contentWindow,'   ');assert.equal(copies.length,0);
+  send();assert.deepEqual(copies,['Selected text']);
+  container.disposePreview();send();assert.equal(copies.length,1);
+ }finally{Object.assign(globalThis,old);}
+});
