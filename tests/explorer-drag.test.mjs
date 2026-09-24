@@ -40,11 +40,19 @@ test('drop resolves the replacement tree and ignores an inactive explorer',()=>{
  }finally{dispose();globalThis.document=previous;}
 });
 
-test('captured WebKit pointer accepts buttons zero and cancels on capture loss',async()=>{
+test('capture is acquired only for a held drag and never substitutes for a held button',async()=>{
  const s=setup();let captured=false;
  s.row.setPointerCapture=()=>{captured=true;};s.row.hasPointerCapture=()=>captured;s.row.releasePointerCapture=()=>{captured=false;};
- s.row.fire('pointerdown',s.event());s.doc.fire('pointermove',s.event(30,{buttons:0}));assert.equal(s.ghosts,1);
- s.doc.fire('pointerup',s.event(30,{buttons:0}));await Promise.resolve();assert.equal(s.moves,1);assert.equal(captured,false);
- s.row.fire('pointerdown',s.event());s.doc.fire('pointermove',s.event(30,{buttons:0}));captured=false;s.row.fire('lostpointercapture',s.event());
- s.doc.fire('pointerup',s.event(30,{buttons:0}));await Promise.resolve();assert.equal(s.moves,1);assert.equal(s.ghosts,0);s.remove();
+ s.row.fire('pointerdown',s.event());assert.equal(captured,false);
+ s.doc.fire('pointermove',s.event(30));assert.equal(s.ghosts,1);assert.equal(captured,true);
+ s.doc.fire('pointermove',s.event(40,{buttons:0}));s.doc.fire('pointerup',s.event(40,{buttons:0}));
+ await Promise.resolve();assert.equal(s.moves,0);assert.equal(captured,false);assert.equal(s.ghosts,0);s.remove();
+});
+test('mouse release or completed click cancels a gesture even if pointerup is missed',async()=>{
+ for(const end of ['mouseup','click']){const s=setup();s.row.fire('pointerdown',s.event());s.doc.fire(end,s.event());s.doc.fire('pointermove',s.event(30));s.doc.fire('pointerup',s.event(30));await Promise.resolve();assert.equal(s.moves,0);assert.equal(s.ghosts,0);s.remove();}
+});
+
+test('reversed trackpad release/press cannot arm a drag; WebKit zero-buttons real drag works',async()=>{
+ const s=setup();const e=s.event(0,{buttons:0,timeStamp:100});s.row.fire('pointerup',e);s.row.fire('pointerdown',e);s.doc.fire('pointermove',s.event(40,{buttons:0,timeStamp:200}));assert.equal(s.ghosts,0);
+ s.row.fire('pointerdown',{...e,timeStamp:300});s.doc.fire('pointermove',s.event(40,{buttons:0,timeStamp:350}));assert.equal(s.ghosts,1);s.doc.fire('pointerup',s.event(40,{buttons:0,timeStamp:400}));await Promise.resolve();assert.equal(s.moves,1);s.remove();
 });

@@ -1,3 +1,4 @@
+import {editorPointerLifecycle} from './editor-pointer.js';
 import {insertTabStop} from './editor-tab.js';
 import {scrollPastEnd} from './scroll-past-end.js';
 import {sourceSticky} from './source-sticky.js';
@@ -30,6 +31,7 @@ export function sourceEditor(textarea,ext){
  const wrapping=new Compartment();const wrapEnabled=()=>localStorage.getItem('editor-word-wrap')==='on';
  const extensions=[scrollPastEnd(ext),sourceSticky(ext),editorOverview,wrapping.of(wrapEnabled()?EditorView.lineWrapping:[]),EditorState.allowMultipleSelections.of(true),EditorState.tabSize.of(4),indentUnit.of('    '),commands.history(),lineNumbers(),highlightActiveLineGutter(),drawSelection(),rectangularSelection({eventFilter:e=>e.button===0&&e.shiftKey&&e.altKey}),crosshairCursor({key:'Alt'}),highlightSelectionMatches(),search({top:true,literal:true,createPanel:createFindPanel}),keymap.of([...commands.defaultKeymap,...commands.historyKeymap,{key:'Tab',run:insertTabStop},{key:'Shift-Tab',run:commands.indentLess}]),syntax,EditorView.contentAttributes.of({'aria-label':textarea.getAttribute('aria-label')||'文件内容',spellcheck:'false'}),EditorView.updateListener.of(update=>{if(update.docChanged)textarea.dispatchEvent(new Event('input',{bubbles:true}));})];
  const view=new EditorView({state:EditorState.create({doc:textarea.value,selection:{anchor:textarea.selectionStart,head:textarea.selectionEnd},extensions}),parent:shell});
+ const releasePointer=editorPointerLifecycle(view);
  view.harnessHighlightLine=(number)=>{const line=view.state.doc.line(number);if(!grammar)return [{text:line.text}];let stack=null,result;for(let n=1;n<=number;n++){const current=view.state.doc.line(n);result=tokenCache.tokenize(grammar,n,current.text,stack);stack=result.ruleStack;}const spans=[];for(let j=0;j<result.tokens.length;j+=2){const start=result.tokens[j],end=j+2<result.tokens.length?result.tokens[j+2]:line.length;spans.push({text:line.text.slice(start,end),color:palette[(result.tokens[j+1]>>>15)&511]});}return spans;};
  textarea.hidden=true;textarea.setAttribute('aria-hidden','true');shell.append(textarea);view.contentDOM.harnessSource=textarea;
  const clamp=n=>Math.max(0,Math.min(view.state.doc.length,n));
@@ -44,7 +46,7 @@ export function sourceEditor(textarea,ext){
  async function applyTheme(){const next=await sharedRegistry();if(disposed)return;registry=next;tokenCache.clear();grammar=scopes[ext]?await registry.loadGrammar(scopes[ext]):null;if(disposed)return;palette=registry.getColorMap();view.dispatch({effects:syntaxChanged.of(null)});}
 
  const observer=new MutationObserver(()=>applyTheme().catch(()=>{}));observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});applyTheme().catch(()=>{});
- return {element:shell,refresh:()=>view.requestMeasure(),dispose(){if(disposed)return;disposed=true;clearInterval(cacheCleanup);tokenCache.clear();releaseSyntax();window.removeEventListener('editor-word-wrap-changed',updateWrap);const text=view.state.doc.toString(),selection=view.state.selection.main;observer.disconnect();view.destroy();delete textarea.cmEditor;for(const key of own)delete textarea[key];textarea.value=text;textarea.setSelectionRange(selection.from,selection.to);textarea.hidden=false;textarea.removeAttribute('aria-hidden');}};
+ return {element:shell,refresh:()=>view.requestMeasure(),dispose(){if(disposed)return;disposed=true;clearInterval(cacheCleanup);tokenCache.clear();releaseSyntax();window.removeEventListener('editor-word-wrap-changed',updateWrap);const text=view.state.doc.toString(),selection=view.state.selection.main;observer.disconnect();releasePointer();view.destroy();delete textarea.cmEditor;for(const key of own)delete textarea[key];textarea.value=text;textarea.setSelectionRange(selection.from,selection.to);textarea.hidden=false;textarea.removeAttribute('aria-hidden');}};
 }
 
 export async function highlightCodeBlocks(article){
