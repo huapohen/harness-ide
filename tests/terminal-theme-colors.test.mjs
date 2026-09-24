@@ -40,3 +40,21 @@ test('OMP flat text follows both themes and flat borders disappear without hidin
  apply(light);term.renderer.render(buffer,false);assert.equal(cells[0].fg_r,56);assert.equal(cells[2].codepoint,32);
  active=false;term.renderer.render(buffer,false);assert.deepEqual(cells,original);assert.equal(original[0].fg_r,228);
 });
+
+test('OMP status background and powerline caps follow theme without recoloring its accent text',()=>{
+ let cells,active=true;const term={element:{style:{}},renderer:{render(buffer){cells=buffer.getLine(0);},setTheme(){}}};
+ const dark={background:'#282c34',foreground:'#abb2bf'},light={background:'#ffffff',foreground:'#383a42'};
+ const apply=installThemeAdapter(term,dark,{flatOmp:()=>active});
+ const cell=(codepoint,fg,bg)=>({codepoint,fg_r:fg[0],fg_g:fg[1],fg_b:fg[2],bg_r:bg[0],bg_g:bg[1],bg_b:bg[2]});
+ const original=[cell(113,[0,175,255],[18,18,18]),cell(113,[0,175,255],[15,18,22]),cell(0x25b6,[18,18,18],[40,44,52]),cell(0xe0b0,[15,18,22],[40,44,52]),cell(97,[18,18,18],[40,44,52])];
+ const buffer={getLine:()=>original};
+ for(const theme of [light,dark,{...dark,background:'#334455'}]){
+  apply(theme);term.renderer.render(buffer);
+  const bg=[1,3,5].map(i=>parseInt(theme.background.slice(i,i+2),16));
+  for(const c of cells.slice(0,4))assert.deepEqual([c.bg_r,c.bg_g,c.bg_b],bg);
+  for(const c of cells.slice(2,4))assert.deepEqual([c.fg_r,c.fg_g,c.fg_b],bg);
+  assert.deepEqual([cells[0].fg_r,cells[0].fg_g,cells[0].fg_b],[0,175,255]);
+  assert.equal(cells[4].fg_r,18);
+ }
+ apply(dark);active=false;term.renderer.render(buffer);assert.deepEqual(cells,original);
+});

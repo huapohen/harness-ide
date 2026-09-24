@@ -6,11 +6,16 @@ export function installThemeAdapter(term,initial,{flatOmp=()=>false}={}){
  const renderer=term.renderer,render=renderer.render.bind(renderer);let foreground=new Map(),background=new Map(),dirty=false,lastFocused,lastCursorState,cursorPositioned=false,applicationColors=false,current=initial;
  const rgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
  const key=(c,p)=>`${c[p+'_r']},${c[p+'_g']},${c[p+'_b']}`;
- const mapLine=line=>line?.map(cell=>{const source=key(cell,'fg'),bg=background.get(key(cell,'bg'));let fg=foreground.get(source);
+ const statusBackground=new Set(['15,18,22','18,18,18']);
+ const statusSeparators=new Set([0x25b6,0x25c0,0xe0b0,0xe0b2]);
+ const mapLine=line=>line?.map(cell=>{const source=key(cell,'fg');let bg=background.get(key(cell,'bg')),fg=foreground.get(source);
   // OMP titanium-flat uses terminal-default text, but recent OMP resolves it
   // to near-white. Its deliberately hidden border is a fixed dark color.
   // Recognize both truecolor and xterm-256 equivalents, only in OMP/herdr.
-  if(applicationColors){if(['229,229,231','228,228,228'].includes(source))fg=rgb(current.foreground);
+  if(applicationColors){
+   if(statusBackground.has(key(cell,'bg')))bg=rgb(current.background);
+   if(statusSeparators.has(cell.codepoint)&&statusBackground.has(source))fg=rgb(current.background);
+   else if(['229,229,231','228,228,228'].includes(source))fg=rgb(current.foreground);
    else if(cell.codepoint>=0x2500&&cell.codepoint<=0x257f&&['36,39,46','38,38,38','29,31,35','28,28,28'].includes(source))return {...cell,codepoint:32,...(bg?{bg_r:bg[0],bg_g:bg[1],bg_b:bg[2]}:{})};}
   if(!fg&&!bg)return cell;return {...cell,...(fg?{fg_r:fg[0],fg_g:fg[1],fg_b:fg[2]}:{}),...(bg?{bg_r:bg[0],bg_g:bg[1],bg_b:bg[2]}:{})};});
  const wrap= (target,method)=>new Proxy(target,{get(obj,prop){if(prop==='getCursor'&&method==='getLine')return ()=>{const cursor=obj.getCursor();if(cursor.x>0||cursor.y>0)cursorPositioned=true;return {...cursor,visible:cursor.visible&&term.startupReady!==false&&cursorPositioned&&(typeof document==='undefined'||term.element.contains(document.activeElement))};};if(prop===method)return i=>mapLine(obj[method](i));const value=Reflect.get(obj,prop);return typeof value==='function'?value.bind(obj):value;}});
