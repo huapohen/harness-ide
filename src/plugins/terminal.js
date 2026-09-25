@@ -39,7 +39,7 @@ export default {id:'terminal',requires:['workbench','terminal.connect','theme'],
   tab.detachForUpdate=()=>request('detach');tab.commitUpdate=()=>send({type:'commitUpdate'});tab.cancelDetach=()=>send({type:'cancelDetach'});
   tab.checkClose=()=>request('checkClose');tab.requestClose=()=>request('close');tab.sendData=data=>send({type:'data',data});
   disposeMouse=installTerminalMouse(term,element,data=>send({type:'data',data}),()=>/herdr/i.test(tab.busyReason||''));
-  term.attachCustomKeyEventHandler(event=>terminalKeyOverride(event,data=>send({type:'data',data})));
+  term.attachCustomKeyEventHandler(event=>terminalKeyOverride(event,data=>send({type:'data',data}),term));
   term.onData(data=>send({type:'data',data}));term.onResize(({cols,rows})=>send({type:'resize',cols,rows}));
   socket.onopen=()=>{tab.resize();for(const m of earlyInput)send(m);earlyInput.length=0;};
   socket.onmessage=e=>{const m=JSON.parse(e.data);
