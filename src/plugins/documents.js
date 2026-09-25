@@ -1,3 +1,5 @@
+import {EditorSelection} from '@codemirror/state';
+import {positionKey,clampSelection,documentPositions} from '../document-position.js';
 import {markdownReadingPosition} from '../markdown-progress.js';
 import {markdownInteractions} from '../markdown-links.js';
 import {documentIdentity} from '../../shared/document-identity.js';
@@ -11,10 +13,14 @@ import {sourceEditor} from '../source-editor.js';
 export default {id:'documents',requires:['api','workbench'],async activate(ctx){
  const api=ctx.get('api'),wb=ctx.get('workbench'),viewers=new Map(),pending=new Map();let untitled=0,syncing=false;
  const opening=inFlight();
+ const positionStorage=new Map([['harness-document-positions-v1',JSON.stringify(await api('settings/documentPositions/read'))]]);let positionTimer,positionWrite=Promise.resolve();
+ const flushPositions=()=>{clearTimeout(positionTimer);const positions=JSON.parse(positionStorage.get('harness-document-positions-v1'));positionWrite=positionWrite.catch(()=>{}).then(()=>api('settings/documentPositions/write',{positions}));return positionWrite;};
+ const positions=documentPositions({getItem:key=>positionStorage.get(key),setItem:(key,value)=>{positionStorage.set(key,value);clearTimeout(positionTimer);positionTimer=setTimeout(()=>flushPositions().catch(logMessage),250);}});
+ ctx.effect(()=>{clearTimeout(positionTimer);flushPositions().catch(logMessage);});
  const enqueueSave=saveQueue(),automatic=autoSave({tabs:()=>wb.tabs.filter(t=>t.previewGroup!=='right'),ready:()=>window.harnessHotReady&&!window.harnessHotUpdating&&!window.harnessQuitting&&!wb.isClosing()&&!document.querySelector('dialog[open],.tab-rename,.explorer-rename'),onError:(error,tab)=>logMessage('Auto Save · '+tab.title+': '+error.message)});
  let autoSaveEnabled=(await api('settings/layout/read')).autoSave===true,togglePending=Promise.resolve();
  const applyAutoSave=()=>{automatic.set(autoSaveEnabled);window.webkit?.messageHandlers.windowChrome?.postMessage({action:'autoSave',enabled:autoSaveEnabled});};
- wb.flushFileOperations=async()=>{await togglePending.catch(()=>{});await enqueueSave.idle();};ctx.effect(()=>delete wb.flushFileOperations);
+ wb.flushFileOperations=async()=>{await togglePending.catch(()=>{});await enqueueSave.idle();await flushPositions();};ctx.effect(()=>delete wb.flushFileOperations);
  applyAutoSave();ctx.on('tabs.changed',()=>automatic.schedule());ctx.effect(()=>automatic.dispose());
  ctx.effect(wb.command('files.autoSave','File · Auto Save',()=>{togglePending=togglePending.catch(()=>{}).then(async()=>{const value=!autoSaveEnabled;await api('settings/layout/write',{autoSave:value});autoSaveEnabled=value;applyAutoSave();});return togglePending;}));
  viewers.set('csv',csvPreview);
@@ -66,6 +72,19 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
   tab.sessionBackup=()=>({version,saved,...tab.sessionView(),editor:{doc:source.value,selection:source.cmEditor.view.state.selection.toJSON()}});
   tab.sessionView=()=>({mode,scrollTop:source.cmEditor.view.scrollDOM.scrollTop,scrollLeft:source.cmEditor.view.scrollDOM.scrollLeft,previewScroll:preview.querySelector('.markdown-scroll')?.scrollTop||0,selection:source.cmEditor.view.state.selection.toJSON()});
   tab.hotSnapshot=()=>({version,saved,mode,editor:source.cmEditor.snapshot(),scrollTop:source.cmEditor.view.scrollDOM.scrollTop,scrollLeft:source.cmEditor.view.scrollDOM.scrollLeft,previewScroll:preview.querySelector('.markdown-scroll')?.scrollTop||0,tocOpen:preview.dataset.tocOpen});tab.hotRestore=snapshot=>{version=snapshot.version;saved=snapshot.saved;source.cmEditor.restore(snapshot.editor);tab.dirty=source.value!==saved;preview.dataset.tocOpen=snapshot.tocOpen||'false';tab.showMode(snapshot.mode);tab.hotRestoreScroll=()=>{source.cmEditor.view.scrollDOM.scrollTo(snapshot.scrollLeft||0,snapshot.scrollTop||0);preview.querySelector('.markdown-scroll')?.scrollTo(0,snapshot.previewScroll||0);};requestAnimationFrame(tab.hotRestoreScroll);};
+  const workspace=await api('info');
+  const key=()=>positionKey(workspace,tab.path,!!tab.external);
+  let lastPosition=null;
+  const remember=()=>{if(!tab.path)return;if(element.isConnected&&element.getClientRects().length)lastPosition=tab.sessionView();if(lastPosition)positions.set(key(),lastPosition);};
+  const selectionChanged=()=>{if(source.cmEditor?.view.hasFocus)remember();};
+  const scrollChanged=()=>remember();
+  source.cmEditor.view.scrollDOM.addEventListener('scroll',scrollChanged);
+  document.addEventListener('selectionchange',selectionChanged);
+  window.addEventListener('pagehide',remember);
+  tab.rememberPosition=remember;
+  const disposeEditor=tab.dispose;tab.dispose=()=>{remember();document.removeEventListener('selectionchange',selectionChanged);window.removeEventListener('pagehide',remember);source.cmEditor?.view.scrollDOM.removeEventListener('scroll',scrollChanged);disposeEditor();};
+  const remembered=!fresh?positions.get(key()):null;
+  if(remembered){const view=source.cmEditor.view;view.dispatch({selection:EditorSelection.fromJSON(clampSelection(remembered.selection,view.state.doc.length))});lastPosition=remembered;}
   tab.acceptSaved=(nextVersion,text)=>{version=nextVersion;saved=text;tab.dirty=source.value!==saved;};
   tab.refreshPreview=()=>{if(mode==='preview')show();};
   source.oninput=()=>{tab.dirty=source.value!==saved;if(!syncing&&tab.path){syncing=true;try{for(const other of wb.tabs)if(other!==tab&&other.path===tab.path&&!!other.external===!!tab.external&&other.editor){other.editor.value=source.value;other.refreshPreview?.();}}finally{syncing=false;}}wb.render();};source.onkeydown=e=>{if(e.key==='Tab'){e.preventDefault();source.setRangeText('    ',source.selectionStart,source.selectionEnd,'end');source.dispatchEvent(new Event('input'));}};
@@ -75,7 +94,7 @@ export default {id:'documents',requires:['api','workbench'],async activate(ctx){
   tab.saveAs=()=>enqueueSave(saveAs);
    tab.save=({canSave=()=>true}={})=>enqueueSave(async()=>{if(!canSave())return false;if(fresh)return saveAs();if(!tab.dirty)return true;const value=source.value,r=await api(external?'external':'write',{action:'write',path,data:encode(value),version});version=r.version;saved=value;tab.dirty=source.value!==saved;for(const other of wb.tabs)if(other!==tab&&other.path===tab.path&&!!other.external===!!tab.external)other.acceptSaved?.(version,saved);wb.render();logMessage('已保存 '+tab.title);return true;});
   tab.autoSaveEligible=()=>!fresh;
-  show();const peer=wb.tabs.find(t=>t.path===tab.path&&!!t.external===!!tab.external&&t.dirty&&t.editor&&t.hotSnapshot);if(peer)await tab.hotRestore(peer.hotSnapshot());wb.open(tab);if(external&&tab.previewGroup!=='right')recent(path);
+  show();const peer=wb.tabs.find(t=>t.path===tab.path&&!!t.external===!!tab.external&&t.dirty&&t.editor&&t.hotSnapshot);if(peer)await tab.hotRestore(peer.hotSnapshot());wb.open(tab);if(remembered&&!peer){const view=source.cmEditor.view;view.requestMeasure({key:tab,read:()=>null,write:()=>{if(!element.isConnected)return;view.scrollDOM.scrollTo(remembered.scrollLeft||0,remembered.scrollTop||0);}});}if(external&&tab.previewGroup!=='right')recent(path);
  }
  window.harnessRunCommand=id=>{try{Promise.resolve(wb.run(id)).catch(logMessage);}catch(e){logMessage(e);}};
  window.harnessOpenPath=async(path,directory)=>{try{if(directory){await ctx.get('workspace').connect(path,null);if(ctx.get('workspace').info().root===path)recent(path,true);}else await open(path,{external:true});}catch(e){logMessage(e);}};

@@ -26,6 +26,12 @@ export default {id:'settings',requires:['routes'],async activate(ctx){
  await fs.mkdir(directory,{recursive:true});const file=path.join(directory,'keybindings.json');
  try{await fs.writeFile(file,JSON.stringify(defaults,null,2)+'\n',{flag:'wx',mode:0o600});}catch(e){if(e.code!=='EEXIST')throw e;}
  const read=async()=>{const text=await fs.readFile(file,'utf8');let bindings,error;try{bindings=validateBindings(JSON.parse(text));}catch(e){error=e.message;}return {path:file,text,version:hash(text),bindings,error};};
+ const positionsFile=path.join(directory,'document-positions.json');let positionsPending=Promise.resolve();
+ ctx.effect(ctx.get('routes').register('settings/documentPositions/read',async()=>{try{return JSON.parse(await fs.readFile(positionsFile,'utf8'));}catch(e){if(e.code==='ENOENT')return {};throw e;}}));
+ ctx.effect(ctx.get('routes').register('settings/documentPositions/write',q=>{
+  const text=JSON.stringify(q.positions);if(!q.positions||Array.isArray(q.positions)||typeof q.positions!=='object'||Object.keys(q.positions).length>200||text.length>262144)throw Error('Invalid document positions');
+  const task=positionsPending.then(async()=>{const temp=positionsFile+'.'+randomUUID()+'.tmp';try{await fs.writeFile(temp,text,{mode:0o600});await fs.rename(temp,positionsFile);}finally{await fs.rm(temp,{force:true});}});positionsPending=task.catch(()=>{});return task.then(()=>({ok:true}));
+ }));
  const layoutFile=path.join(directory,'layout.json');
  const readLayout=async()=>{try{return JSON.parse(await fs.readFile(layoutFile,'utf8'));}catch(e){if(e.code==='ENOENT')return {};throw e;}};
  let layoutPending=Promise.resolve();
