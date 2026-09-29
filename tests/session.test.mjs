@@ -62,3 +62,10 @@ test('incomplete startup or hot restore cannot overwrite the last good backup',a
  globalThis.window={harnessSessionRestoreFailed:true};let accessed=false;
  try{await assert.rejects(startFileSessions({get(){accessed=true;throw Error('must not access session storage');}}),/retaining the existing backup/);assert.equal(accessed,false);}finally{globalThis.window=previous;}
 });
+test('cold restoration awaits the document position restore before laying out tabs',async()=>{
+ const {restoreFiles}=await import('../src/file-session.js');const events=[],tabs=[];
+ const view={selection:{ranges:[{anchor:36176,head:36176}],main:0},scrollTop:25872,scrollLeft:0,mode:'source'};
+ const wb={tabs,active:()=>tabs.at(-1),render(){},run:()=>async()=>tabs.push({restorePosition:async state=>{await Promise.resolve();events.push(state);}}),restoreLayout:async()=>events.push('layout')};
+ await restoreFiles(wb,{tabs:[{id:'two',path:'150/input/2.txt',view}],layout:{active:'two'}});
+ assert.deepEqual(events,[view,'layout']);
+});
