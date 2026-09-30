@@ -1,3 +1,4 @@
+import {selectionCopyEnabled} from './selection-copy.js';
 // Native PDF selections are not DOM ranges. Let WebKit's copy responder read
 // them after selection finishes; do not alter the PDF or replace its renderer.
 export function installPDFSelectionCopy(frame,host=window){
@@ -7,7 +8,7 @@ export function installPDFSelectionCopy(frame,host=window){
   let timer;
   const copy=()=>{
    clearTimeout(timer);timer=setTimeout(()=>{
-    if(!frame.isConnected||host.document.activeElement!==frame)return;
+    if(!selectionCopyEnabled('preview',host.localStorage)||!frame.isConnected||host.document.activeElement!==frame)return;
     const text=doc.getSelection()?.toString();
     const bridge=host.webkit?.messageHandlers.clipboard;
     if(text){if(bridge)bridge.postMessage({id:crypto.randomUUID(),action:'write',text});else host.navigator.clipboard.writeText(text).catch(()=>{});}
@@ -20,6 +21,6 @@ export function installPDFSelectionCopy(frame,host=window){
   doc.addEventListener('mouseup',up,true);doc.addEventListener('keyup',key,true);host.addEventListener('blur',cancel);
   detach=()=>{cancel();doc.removeEventListener('mouseup',up,true);doc.removeEventListener('keyup',key,true);host.removeEventListener('blur',cancel);};
  };
- frame.dataset.pdfAutoCopy='true';frame.addEventListener('load',load);
- return()=>{frame.removeEventListener('load',load);detach();};
+ const update=()=>{if(selectionCopyEnabled('preview',host.localStorage))frame.dataset.pdfAutoCopy='true';else delete frame.dataset.pdfAutoCopy;};update();host.addEventListener('selection-copy-changed',update);frame.addEventListener('load',load);
+ return()=>{host.removeEventListener('selection-copy-changed',update);delete frame.dataset.pdfAutoCopy;frame.removeEventListener('load',load);detach();};
 }

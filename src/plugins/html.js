@@ -1,7 +1,8 @@
+import {selectionCopyEnabled} from '../selection-copy.js';
 import {htmlPath} from '../html-path.js';
 export default {id:'html',requires:['documents','api'],activate(ctx){
  const api=ctx.get('api'),pages=new Map();
- const receive=e=>{for(const [id,page] of pages){if(!page.container.isConnected){pages.delete(id);continue;}if(e.source!==page.frame.contentWindow||e.data?.harnessHTML!==id)continue;if(typeof e.data.href==='string')page.navigate(e.data.href);else if(document.activeElement===page.frame&&typeof e.data.selection==='string'&&e.data.selection.trim()){const text=e.data.selection,handler=window.webkit?.messageHandlers.clipboard;if(handler)handler.postMessage({id:crypto.randomUUID(),action:'write',text});else navigator.clipboard.writeText(text).catch(()=>{});}}};
+ const receive=e=>{for(const [id,page] of pages){if(!page.container.isConnected){pages.delete(id);continue;}if(e.source!==page.frame.contentWindow||e.data?.harnessHTML!==id)continue;if(typeof e.data.href==='string')page.navigate(e.data.href);else if(selectionCopyEnabled('preview')&&document.activeElement===page.frame&&typeof e.data.selection==='string'&&e.data.selection.trim()){const text=e.data.selection,handler=window.webkit?.messageHandlers.clipboard;if(handler)handler.postMessage({id:crypto.randomUUID(),action:'write',text});else navigator.clipboard.writeText(text).catch(()=>{});}}};
  window.addEventListener('message',receive);ctx.effect(()=>{window.removeEventListener('message',receive);pages.clear();});
  for(const ext of ['html','htm'])ctx.effect(ctx.get('documents').register(ext,(container,text,location={})=>{
  container.disposePreview?.();

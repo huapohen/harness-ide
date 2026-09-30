@@ -14,3 +14,9 @@ test('PDF copies a finished selection, not a right click or scroll key',async()=
  host.document.activeElement=null;doc.fire('mouseup',{button:0,detail:2});await tick();assert.equal(sent.length,2);
  dispose();doc.fire('mouseup',{button:0,detail:2});await tick();assert.equal(sent.length,2);
 });
+test('PDF preview setting disables native and DOM copying and changes without reopening',async()=>{
+ let value='off';const sent=[],doc={...events(),getSelection:()=>({toString:()=> 'PDF selection'})},frame={...events(),dataset:{},isConnected:true,contentDocument:doc};const host={...events(),localStorage:{getItem:()=>value},document:{activeElement:frame},webkit:{messageHandlers:{clipboard:{postMessage:x=>sent.push(x)}}}};
+ const dispose=installPDFSelectionCopy(frame,host);frame.fire('load');assert.equal(frame.dataset.pdfAutoCopy,undefined);doc.fire('mouseup',{button:0});await tick();assert.equal(sent.length,0);
+ value='on';host.fire('selection-copy-changed');assert.equal(frame.dataset.pdfAutoCopy,'true');doc.fire('mouseup',{button:0});await tick();assert.equal(sent[0].text,'PDF selection');
+ value='off';host.fire('selection-copy-changed');doc.getSelection=()=>({toString:()=>''});doc.fire('mouseup',{button:0});await tick();assert.equal(sent.length,1);dispose();
+});

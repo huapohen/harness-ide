@@ -1,3 +1,4 @@
+import {selectionCopyEnabled} from '../selection-copy.js';
 import {explorerClipboardCommand} from '../explorer-transfer.js';
 import {form,logMessage} from '../ui.js';
 export function lineRange(value,start,end=start){const from=start===0?0:value.lastIndexOf('\n',start-1)+1;let to=value.indexOf('\n',end>start&&value[end-1]==='\n'?end-1:end);if(to<0)to=value.length;return {from,to};}
@@ -18,7 +19,7 @@ export default {id:'editing',requires:['workbench'],activate(ctx){
  window.harnessClipboardResult=(id,text)=>{const p=window.__clipboardPending?.get(id);if(p){window.__clipboardPending.delete(id);p.resolve(text);}};
  let mouseFile=null;
  const mouseDown=e=>{mouseFile=e.button===0?e.target.closest('.document,.keybindings-json'):null;};
- const mouseUp=e=>{const file=mouseFile;mouseFile=null;if(e.button!==0||!file)return;setTimeout(()=>{const input=target();let text='';if(input&&file.contains(input))text=input.cmEditor?input.cmEditor.selectedText():input.value.slice(input.selectionStart,input.selectionEnd);else{const selection=window.getSelection();if(selection&&file.contains(selection.anchorNode)&&file.contains(selection.focusNode))text=selection.toString();}if(text)nativeClipboard('write',text).catch(logMessage);},0);};
+ const mouseUp=e=>{const file=mouseFile;mouseFile=null;if(e.button!==0||!file)return;setTimeout(()=>{const input=target();let text='';if(input&&file.contains(input))text=input.cmEditor?input.cmEditor.selectedText():input.value.slice(input.selectionStart,input.selectionEnd);else{const selection=window.getSelection();if(selection&&file.contains(selection.anchorNode)&&file.contains(selection.focusNode))text=selection.toString();}if(text&&selectionCopyEnabled(input&&file.contains(input)&&!input.readOnly?'edit':'preview'))nativeClipboard('write',text).catch(logMessage);},0);};
  document.addEventListener('mousedown',mouseDown);document.addEventListener('mouseup',mouseUp);ctx.effect(()=>{document.removeEventListener('mousedown',mouseDown);document.removeEventListener('mouseup',mouseUp);});
  async function copy(cut=false){
   if(explorerClipboardCommand(cut?'x':'c'))return;
