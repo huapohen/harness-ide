@@ -55,9 +55,16 @@ cat > "$bundle/Contents/Info.plist" <<'PLIST'
 <key>CFBundleName</key><string>Harness IDE</string>
 <key>CFBundleDisplayName</key><string>Harness IDE</string>
 <key>CFBundleShortVersionString</key><string>0.3.0</string>
-<key>CFBundleVersion</key><string>3</string>
+<key>CFBundleVersion</key><string>4</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
+<key>CFBundleDocumentTypes</key><array>
+<dict><key>CFBundleTypeName</key><string>Markdown</string><key>CFBundleTypeRole</key><string>Editor</string><key>LSHandlerRank</key><string>Alternate</string><key>LSItemContentTypes</key><array><string>net.daringfireball.markdown</string></array><key>CFBundleTypeExtensions</key><array><string>md</string><string>markdown</string><string>mdown</string></array></dict>
+<dict><key>CFBundleTypeName</key><string>Text and Source Files</string><key>CFBundleTypeRole</key><string>Editor</string><key>LSHandlerRank</key><string>Alternate</string><key>LSItemContentTypes</key><array><string>public.text</string><string>public.source-code</string><string>public.json</string><string>public.xml</string></array></dict>
+<dict><key>CFBundleTypeName</key><string>Preview Documents</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>LSItemContentTypes</key><array><string>com.adobe.pdf</string><string>public.image</string></array></dict>
+<dict><key>CFBundleTypeName</key><string>Folders</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>LSItemContentTypes</key><array><string>public.folder</string></array></dict>
+</array>
+<key>UTImportedTypeDeclarations</key><array><dict><key>UTTypeIdentifier</key><string>net.daringfireball.markdown</string><key>UTTypeDescription</key><string>Markdown</string><key>UTTypeConformsTo</key><array><string>public.plain-text</string></array><key>UTTypeTagSpecification</key><dict><key>public.filename-extension</key><array><string>md</string><string>markdown</string><string>mdown</string></array><key>public.mime-type</key><string>text/markdown</string></dict></dict></array>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSPrincipalClass</key><string>HarnessApplication</string>

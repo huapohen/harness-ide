@@ -56,6 +56,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     var child: Process?
     var recentMenu: NSMenu!
     var autoSaveItem: NSMenuItem!
+    private var pendingOpenPaths: [String] = []
+    private var openingPaths = false
+    func application(_ sender: NSApplication, openFiles filenames: [String]) {
+        pendingOpenPaths.append(contentsOf: filenames)
+        sender.reply(toOpenOrPrint: .success)
+        drainOpenPaths()
+    }
+    private func drainOpenPaths() {
+        guard !openingPaths, !pendingOpenPaths.isEmpty else { return }
+        guard let web = web else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { self.drainOpenPaths() }
+            return
+        }
+        openingPaths = true
+        let path = pendingOpenPaths[0]
+        var directory: ObjCBool = false
+        FileManager.default.fileExists(atPath: path, isDirectory: &directory)
+        web.callAsyncJavaScript("if (!window.harnessHotReady || window.harnessHotUpdating || !window.harnessOpenPath) return false; await window.harnessOpenPath(path, directory); return true;", arguments: ["path": path, "directory": directory.boolValue], in: nil, in: .page) { result in
+            self.openingPaths = false
+            if case .success(let handled) = result, handled as? Bool == true {
+                self.pendingOpenPaths.removeFirst()
+                self.window.makeKeyAndOrderFront(nil)
+                NSApplication.shared.activate(ignoringOtherApps: true)
+            }
+            if !self.pendingOpenPaths.isEmpty {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { self.drainOpenPaths() }
+            }
+        }
+    }
     func applicationDidFinishLaunching(_ notification: Notification) {
         let menu = NSMenu()
         let appItem = NSMenuItem(); menu.addItem(appItem)
