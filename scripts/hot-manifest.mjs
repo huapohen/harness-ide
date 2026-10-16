@@ -1,3 +1,4 @@
+import './build-associations.mjs';
 import entries from '../plugins.config.js';
 import fs from 'node:fs/promises';
 import {createHash} from 'node:crypto';

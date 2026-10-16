@@ -12,12 +12,9 @@ func check(_ condition: Bool, _ message: String) {
 }
 check(Bundle(url: app)?.bundleIdentifier == bundleID, "Install Harness IDE in /Applications first.")
 let audit = CommandLine.arguments.contains("--check")
-if !audit {
-    check(LSRegisterURL(app as CFURL, true) == noErr, "Failed to register Harness IDE.")
-}
+check(audit, "请在 Harness IDE → 设置 → 文件后缀与默认应用 中管理关联。此脚本仅保留 --check 查询模式。")
 let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
 let extensions = try String(contentsOf: root.appendingPathComponent("native/document-extensions.txt"), encoding: .utf8).split(whereSeparator: { $0.isWhitespace }).map(String.init)
-var pending = 0
 var failures = [String]()
 var types = [String: UTType]()
 for ext in extensions {
@@ -27,28 +24,9 @@ for ext in extensions {
     }
     types[ext] = type
 }
-if !audit {
-    // Use the completion-based API: a successful legacy LSSet call may only enqueue the change.
-    for identifier in Set(types.values.map(\.identifier)).sorted() {
-        guard let type = UTType(identifier) else { continue }
-        let existing = LSCopyDefaultRoleHandlerForContentType(identifier as CFString, .all)?.takeRetainedValue() as String?
-        if existing == bundleID { continue }
-        pending += 1
-        NSWorkspace.shared.setDefaultApplication(at: app, toOpen: type) { error in
-            if let error { failures.append("\(identifier): \(error.localizedDescription)") }
-            pending -= 1
-        }
-    }
-    let deadline = Date(timeIntervalSinceNow: 180)
-    while pending > 0 && Date() < deadline {
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-    }
-    check(pending == 0, "Timed out waiting for macOS to apply associations; run --check to inspect current defaults.")
-}
 for ext in extensions {
     guard let type = types[ext] else { continue }
     let handler = LSCopyDefaultRoleHandlerForContentType(type.identifier as CFString, .all)?.takeRetainedValue() as String?
     print(".\(ext) (\(type.identifier)) → \(handler ?? "none")")
-    if !audit && handler != bundleID { failures.append("Default application verification failed for .\(ext)") }
 }
 check(failures.isEmpty, failures.joined(separator: "\n"))

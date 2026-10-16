@@ -2,5 +2,5 @@
 export default [
  {id:'bridge'}, {id:'workbench'}, {id:'themes',config:{default:'one-dark-pro'}},
  {id:'documents'}, {id:'markdown'}, {id:'html'}, {id:'pdf'},
- {id:'terminal'}, {id:'explorer'}, {id:'timeline'}, {id:'search'}, {id:'git'}, {id:'remote'}, {id:'editing'}, {id:'keybindings'}, {id:'plugin-manager'}, {id:'startup'}
+ {id:'terminal'}, {id:'explorer'}, {id:'timeline'}, {id:'search'}, {id:'git'}, {id:'remote'}, {id:'editing'}, {id:'keybindings'}, {id:'file-associations'}, {id:'plugin-manager'}, {id:'startup'}
 ];

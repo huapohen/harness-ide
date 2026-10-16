@@ -1,3 +1,4 @@
+import {mountFileAssociations} from '../file-associations.mjs';
 import {explorerState} from '../explorer-state.mjs';
 import {pruneHistory} from '../history-retention.mjs';
 import {sessionStore} from '../session-store.mjs';
@@ -12,6 +13,7 @@ export default {id:'settings',requires:['routes'],async activate(ctx){
  const maintenance=globalThis[Symbol.for('harness.cacheMaintenance')] ||= {clients:new Map(),last:0,pending:null};
  ctx.effect(ctx.get('routes').register('settings/cache/maintain',async q=>{if(typeof q.client!=='string'||q.client.length>100||!Array.isArray(q.versions)||q.versions.length>20||q.versions.some(v=>! /^[a-f0-9]{20}$/.test(v)))throw Error('Invalid cache lease');maintenance.clients.set(q.client,q.versions);if(maintenance.pending)return maintenance.pending;if(!q.afterUpdate&&Date.now()-maintenance.last<300000)return {removed:0};const root=process.env.HARNESS_UPDATES_DIR||path.join(os.homedir(),'.hot_plugging/hot-updates');const keep=[...maintenance.clients.values()].flat();const own=import.meta.url.match(/hot-updates\/([a-f0-9]{20})\//);if(own)keep.push(own[1]);try{const bundled=JSON.parse(await fs.readFile(path.join(path.dirname(process.argv[1]),'../dist/hot-manifest.json'),'utf8'));keep.push(bundled.version);}catch{}maintenance.pending=cleanReleaseCache(root,keep,{maxAge:q.afterUpdate?0:3600000}).then(result=>{maintenance.last=Date.now();return result;}).finally(()=>maintenance.pending=null);return maintenance.pending;}));
  const directory=process.env.HARNESS_SETTINGS_DIR||path.join(os.homedir(),'.hot_plugging','user');
+ mountFileAssociations(ctx,directory);
  const rightTreeState=explorerState(path.join(directory,'right-explorer'));
  ctx.effect(ctx.get('routes').register('settings/rightExplorer/read',q=>rightTreeState.read(q.workspace)));
  ctx.effect(ctx.get('routes').register('settings/rightExplorer/write',q=>rightTreeState.write(q.workspace,q.state)));
@@ -51,7 +53,7 @@ export default {id:'settings',requires:['routes'],async activate(ctx){
   const task=layoutPending.then(async()=>{const current=await readLayout(),temp=layoutFile+'.'+randomUUID()+'.tmp';const value={...current,...(preferences===undefined?{}:{preferences:{...current.preferences,...preferences}}),...(q.rightAutoSave===undefined?{}:{rightAutoSave:q.rightAutoSave}),...(q.rightRecent===undefined?{}:{rightRecent:q.rightRecent}),...(q.secondaryRoot===undefined?{}:{secondaryRoot:q.secondaryRoot}),...(q.topTabAlignment===undefined?{}:{topTabAlignment:q.topTabAlignment}),...(q.autoSave===undefined?{}:{autoSave:q.autoSave}),...(secondaryWidth===undefined?{}:{secondaryWidth}),...(visibility===undefined?{}:{visibility}),...(order===undefined?{}:{activityOrder:order}),...(hidden===undefined?{}:{hiddenPanels:hidden}),...(font===undefined?{}:{font})};try{await fs.writeFile(temp,JSON.stringify(value,null,2)+'\n',{mode:0o600});await fs.rename(temp,layoutFile);}finally{await fs.rm(temp,{force:true});}return value;});layoutPending=task.catch(()=>{});return task;
  }));
 
- const pluginFile=path.join(directory,'plugins.json'),optional=new Set(['git','remote','terminal','markdown','html','pdf','timeline','search','editing']);
+ const pluginFile=path.join(directory,'plugins.json'),optional=new Set(['git','remote','terminal','markdown','html','pdf','timeline','search','editing','file-associations']);
  const readPlugins=async()=>{try{return JSON.parse(await fs.readFile(pluginFile,'utf8'));}catch(e){if(e.code==='ENOENT')return {};throw e;}};
  const installationRoot=process.env.HARNESS_UPDATES_DIR||path.join(os.homedir(),'.hot_plugging/hot-updates');
  const packageDir=id=>path.join(installationRoot,hash('installed-plugin:'+id).slice(0,20));

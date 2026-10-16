@@ -377,16 +377,25 @@ macOS Finder 的“打开方式”支持 Harness IDE：注册 Markdown、文本�
 编辑模式支持 Shift+Option+左键从当前光标跨行扩展矩形选区；可先定位起点、滚动到远处再点击终点，无需逐行拖动，后续点击继续沿用同一起点。
 
 
-### macOS 默认文件关联
+### 文件后缀与默认应用插件
 
-安装包显式注册 `native/document-extensions.txt` 中的文本、源码和配置文件后缀，同时单独声明 YAML 和 JavaScript 类型。安装后运行 `swift scripts/set-file-defaults.swift` 将清单中的文件类型默认关联到 `/Applications/Harness IDE.app`；`swift scripts/set-file-defaults.swift --check` 只查询当前默认程序。脚本检查应用身份、注册应用、通过 macOS 异步接口设置并验证系统默认处理程序，跳过已生效的关联；系统可能弹出更改默认应用的确认框。安装包本身不会自动修改用户的默认应用。
+设置侧栏在「快捷键与命令」下方提供「文件后缀与默认应用」折叠分组。可搜索当前管理的后缀和应用，添加后缀、修改名称或目标应用、删除配置，显示系统实际默认应用与配置是否一致。应用名称支持下拉建议，也可输入已安装应用的 Bundle ID。
 
-| 类型 | 默认关联后缀 |
+- 「保存」仅持久化配置；逐项点击「应用」才更改 macOS 默认关联。系统可能弹出确认框，取消或超时会显示错误，并重新查询实际结果。
+- 「恢复」还原插件首次更改前记录的默认应用；删除插件管理过的条目也先恢复原应用。若系统关联后来被其他程序修改，则保留外部选择。原来未设置默认应用时，macOS 不提供清空默认处理程序的接口；删除会明确提示保留当前系统关联。
+- 已经由插件更改过的后缀需先恢复再改名，避免留下无法恢复的旧关联。此前就存在的系统关联没有恢复历史；删除这类条目只从管理列表移除，不清除系统关联。
+- macOS 按内容类型关联文件；操作前会列出共享类型的后缀（例如 yml/yaml、js/mjs、html/htm），同类型后缀可能一起更改。`.ts`、`.mts`、`.tsx` 不在默认管理清单中，保留视频关联，需要时可自行添加。
+- 配置保存在本机 `user/file-associations.json`，不提交 Git。带版本校验的串行写入防止多窗口和热更新期间覆盖配置；系统操作前先保存恢复信息。
+- 插件管理器中的 `file-associations` 支持停用、启用、卸载和重新安装。停用/卸载移除设置分组并拒绝新的关联操作，保留本机配置及已生效的系统关联；重新安装恢复管理能力。已经提交给 macOS 的确认操作仍可能完成。
+
+初始清单包含 75 个常用文本/源码后缀：HTML/HTM 默认配置为 Google Chrome，其余为 Harness IDE；首次读取不会修改系统关联。PDF、图片、Office、文件夹及 HTTP/HTTPS 默认浏览器不自动更改。后缀清单仅表示可用作文本管理，不保证每种后缀都有专用语法高亮；无后缀的 Dockerfile、SSH config 不属于后缀关联。
+
+实现采用独立前端插件、可注册/撤销的设置分组服务及 settings 后端中的可热替换模块，不新增内核逻辑。macOS 系统调用由随热更新发布的已签名原生小组件完成，运行时无需 Xcode 或 Swift 编译器。构建机仍需 Xcode Command Line Tools。旧 `scripts/set-file-defaults.swift` 仅保留 `--check` 查询模式，批量设置改由 UI 管理，避免覆盖用户配置。
+
+| 初始分类 | 后缀 |
 | --- | --- |
 | 文本、日志、Markdown | txt、text、log、md、markdown、mdown |
 | 数据与配置 | json、jsonc、jsonl、ndjson、yaml、yml、toml、ini、conf、cfg、config、properties、env、setting、settings、xml、xsd、xsl、xslt、csv、tsv |
 | 前端与网页 | js、mjs、cjs、jsx、cts、html、htm、css、scss、sass、less、vue、svelte |
 | 脚本与源码 | py、pyw、sh、bash、zsh、fish、sql、java、c、h、cc、cpp、cxx、hpp、hxx、cs、go、rs、rb、php、swift、kt、kts、dart、lua、pl、r |
 | 其他文本 | tex、bib、diff、patch、graphql、gql、dockerfile、sshconfig |
-
-本机保留 `.ts`、`.mts` 的视频默认应用，因为 macOS 将它们识别为 MPEG 传输流。`.tsx` 也暂不设为默认：本机系统确认框将它与 `.ts` 一起更改，会影响上述保留选择。PDF、图片、Office 文件和文件夹仍保留原默认应用；HTTP/HTTPS 默认浏览器不改动。macOS 按内容类型共享部分后缀的关联（例如 yml/yaml、js/mjs）；清单指扩展名，无后缀的 Dockerfile、SSH config 不属于后缀关联。可编辑纯文本不代表每种后缀都有专用语法高亮或语言服务。

@@ -367,3 +367,22 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 /* Canvas text is selected by the terminal itself. WebKit's native canvas
    selection otherwise paints the entire terminal on a secondary click. */
 .terminal-mount canvas{-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
+/* Optional file association settings plugin. */
+.association-toolbar{display:flex;gap:6px;align-items:center;min-width:0}
+.association-toolbar input{min-width:0;flex:1}
+.association-form{display:grid;gap:8px;min-width:0}
+.association-actions{display:flex;gap:6px;flex-wrap:wrap}
+.association-actions button,.association-toolbar button{padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px}
+.association-list{max-height:48vh;overflow:auto;min-width:0;overscroll-behavior:contain}
+.association-row{padding:10px 0;border-top:1px solid var(--border);display:grid;gap:6px;overflow-wrap:anywhere}
+.association-row-heading{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.association-badge{font-size:10px;opacity:.65}
+.association-current,.association-target{font-size:11px;line-height:1.5}
+.association-target{opacity:.7}
+.association-status{font-size:11px;line-height:1.5;overflow-wrap:anywhere;margin:0}
+.association-row .panel-note{margin:0;font-size:10px}
+
+[data-settings-section="file-associations"] .panel-note{padding:0;margin:0;font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+[data-settings-section="file-associations"] .association-toolbar>span{flex:1}
+.association-form[hidden]{display:none}
+.association-toolbar input{background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:6px;font-size:11px}

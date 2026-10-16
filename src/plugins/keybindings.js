@@ -61,8 +61,12 @@ export default {id:'keybindings',requires:['api','workbench'],async activate(ctx
   editor.oninput=()=>{jsonTab.dirty=editor.value!==saved;wb.render();};wb.open(jsonTab);
  }
  ctx.effect(wb.command('settings.keybindings','设置 · 键盘快捷键',openSettings));ctx.effect(wb.command('settings.keybindingsJSON','设置 · 打开快捷键 JSON',openJSON));
+ const sections=new Map();let settingsContainer;
+ ctx.provide('settings-sections',{register(id,title,render){if(sections.has(id))throw Error('Duplicate settings section');const section={title,render};sections.set(id,section);if(settingsContainer?.isConnected)mountSection(id,section);return()=>{section.dispose?.();section.element?.remove();sections.delete(id);};}});
+ function mountSection(id,section){section.dispose?.();section.element?.remove();const details=el('details','settings-group');details.dataset.settingsSection=id;details.append(el('summary','',section.title));const body=el('div','settings-group-body');details.append(body);section.element=details;settingsContainer.append(details);section.dispose=section.render(body);}
+ ctx.effect(()=>{for(const section of sections.values())section.dispose?.();});
  ctx.effect(wb.panel('settings','Settings','⚙',container=>{
-  container.classList.add('settings-panel');
+  settingsContainer=container;container.classList.add('settings-panel');
   const group=(title)=>{const details=el('details','settings-group');details.append(el('summary','',title));const body=el('div','settings-group-body');details.append(body);container.append(details);return body;};
   const row=(parent,label,control)=>{const field=el('label','settings-field');field.append(el('span','settings-label',label),control);parent.append(field);return control;};
   const select=(label,choices,value,change)=>{const input=el('select');input.setAttribute('aria-label',label);for(const [v,text] of choices){const option=el('option','',text);option.value=v;input.append(option);}input.value=value;input.onchange=()=>change(input.value);return input;};
@@ -82,6 +86,7 @@ export default {id:'keybindings',requires:['api','workbench'],async activate(ctx
   const tooltipDelay=el('input');tooltipDelay.type='number';tooltipDelay.min='0';tooltipDelay.max='5000';tooltipDelay.step='50';tooltipDelay.value=localStorage.getItem('tab-tooltip-delay')??'300';tooltipDelay.setAttribute('aria-label','标签完整名称悬停延迟（毫秒）');tooltipDelay.onchange=()=>{if(tooltipDelay.value&&tooltipDelay.reportValidity())savePreference('tab-tooltip-delay',tooltipDelay.value);};row(appearance,'标签完整名称悬停延迟（毫秒）',tooltipDelay);
   const editor=group('编辑器');for(const [mode,label]of [['edit','编辑模式：选中即复制（默认关闭）'],['preview','预览模式：选中即复制（默认开启，Markdown / HTML / PDF）']])row(editor,label,select(label,[['off','关闭'],['on','开启']],selectionCopyEnabled(mode)?'on':'off',v=>{savePreference(selectionCopyKeys[mode],v);window.dispatchEvent(new Event('selection-copy-changed'));}));const overview=el('input');overview.type='number';overview.min='20';overview.max='200';overview.step='1';overview.value=fonts.overviewWidth;overview.setAttribute('aria-label','大滑块宽度');overview.onchange=()=>{if(overview.value&&overview.reportValidity())saveFont({overviewWidth:Number(overview.value)});};row(editor,'大滑块宽度（px，20–200）',overview);row(editor,'自动换行',select('编辑器换行',[['on','开启'],['off','关闭']],localStorage.getItem('editor-word-wrap')||'off',v=>{savePreference('editor-word-wrap',v);window.dispatchEvent(new Event('editor-word-wrap-changed'));}));
   const shortcuts=group('快捷键与命令');shortcuts.append(button('键盘快捷键','键盘快捷键',openSettings),button('命令面板','命令面板',()=>wb.run('workbench.palette')));
+  for(const [id,section]of sections)mountSection(id,section);
  }));
  ctx.on('theme.changed',()=>{const select=wb.$('#settings-theme-select');if(select)select.value=ctx.get('theme').id();const colors=ctx.get('theme').backgrounds();for(const input of document.querySelectorAll('[data-background-key]')){input.value=colors[input.dataset.backgroundKey];input.setCustomValidity('');}});
  await load();

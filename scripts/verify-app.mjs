@@ -18,6 +18,8 @@ try {
  const response=await fetch(url.origin+'/api/info',{method:'POST',headers:{Authorization:'Bearer '+url.hash.slice(1)}});
  assert.equal(response.status,200);const info=await response.json();assert.ok(info.root.startsWith(await fs.realpath(temporary)));
  assert.equal((await fetch(url.origin+'/')).status,200);
+ const associations=await fetch(url.origin+'/api/settings/associations/read',{method:'POST',headers:{Authorization:'Bearer '+url.hash.slice(1)}});assert.equal(associations.status,200);const catalog=await associations.json();assert.equal(catalog.error,undefined);assert.ok(catalog.rows.some(row=>row.extension==='html'));
+
  socket=new WebSocket(url.origin.replace('http','ws')+'/terminal?token='+url.hash.slice(1),{origin:url.origin});
  let output='';socket.on('message',data=>{output+=JSON.parse(data).data||'';});await once(socket,'open');
  socket.send(JSON.stringify({type:'data',data:"printf 'APP_%s_READY\\n' BUNDLE\r"}));
@@ -25,7 +27,7 @@ try {
  assert.match(output,/APP_BUNDLE_READY/);clearTimeout(deadline);
  const plist=execFileSync('plutil',['-extract','CFBundleIconFile','raw',path.join(relocated,'Contents/Info.plist')],{encoding:'utf8'}).trim();assert.equal(plist,'AppIcon');
  assert.ok((await fs.readFile(path.join(resources,'AppIcon.icns'))).equals(await fs.readFile('native/assets/AppIcon.icns')));
- console.log('PASS: relocated app signature, bundled Node, HTTP, actual PTY, and exact icon. No source-directory or system Node dependency.');
+ console.log('PASS: relocated app signature, bundled Node, HTTP, actual PTY, file association helper, and exact icon. No source-directory or system Node dependency.');
 } finally {
  socket?.close();if(child && child.exitCode===null){child.kill();await once(child,'exit');}
  await fs.rm(temporary,{recursive:true,force:true});
