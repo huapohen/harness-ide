@@ -1,0 +1,1 @@
+txt text log md markdown mdown json jsonc jsonl ndjson yaml yml toml ini conf cfg config properties env setting settings xml xsd xsl xslt csv tsv js mjs cjs jsx cts html htm css scss sass less vue svelte py pyw sh bash zsh fish sql java c h cc cpp cxx hpp hxx cs go rs rb php swift kt kts dart lua pl r tex bib diff patch graphql gql dockerfile sshconfig

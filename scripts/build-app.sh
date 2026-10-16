@@ -60,7 +60,9 @@ cat > "$bundle/Contents/Info.plist" <<'PLIST'
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundleDocumentTypes</key><array>
 <dict><key>CFBundleTypeName</key><string>Markdown</string><key>CFBundleTypeRole</key><string>Editor</string><key>LSHandlerRank</key><string>Alternate</string><key>LSItemContentTypes</key><array><string>net.daringfireball.markdown</string></array><key>CFBundleTypeExtensions</key><array><string>md</string><string>markdown</string><string>mdown</string></array></dict>
-<dict><key>CFBundleTypeName</key><string>Text and Source Files</string><key>CFBundleTypeRole</key><string>Editor</string><key>LSHandlerRank</key><string>Alternate</string><key>LSItemContentTypes</key><array><string>public.text</string><string>public.source-code</string><string>public.json</string><string>public.xml</string></array></dict>
+<dict><key>CFBundleTypeName</key><string>Text and Source Files</string><key>CFBundleTypeRole</key><string>Editor</string><key>LSHandlerRank</key><string>Alternate</string><key>LSItemContentTypes</key><array><string>public.text</string><string>public.source-code</string><string>public.json</string><string>public.xml</string></array><key>CFBundleTypeExtensions</key><array><!-- HARNESS_TEXT_EXTENSIONS --></array></dict>
+<dict><key>CFBundleTypeName</key><string>YAML</string><key>CFBundleTypeRole</key><string>Editor</string><key>LSHandlerRank</key><string>Alternate</string><key>LSItemContentTypes</key><array><string>public.yaml</string></array><key>CFBundleTypeExtensions</key><array><string>yml</string><string>yaml</string></array></dict>
+<dict><key>CFBundleTypeName</key><string>JavaScript</string><key>CFBundleTypeRole</key><string>Editor</string><key>LSHandlerRank</key><string>Alternate</string><key>LSItemContentTypes</key><array><string>com.netscape.javascript-source</string></array><key>CFBundleTypeExtensions</key><array><string>js</string></array></dict>
 <dict><key>CFBundleTypeName</key><string>Preview Documents</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>LSItemContentTypes</key><array><string>com.adobe.pdf</string><string>public.image</string></array></dict>
 <dict><key>CFBundleTypeName</key><string>Folders</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSHandlerRank</key><string>Alternate</string><key>LSItemContentTypes</key><array><string>public.folder</string></array></dict>
 </array>
@@ -71,6 +73,13 @@ cat > "$bundle/Contents/Info.plist" <<'PLIST'
 <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 </dict></plist>
 PLIST
+node --input-type=module - "$bundle/Contents/Info.plist" <<'JS'
+import fs from 'node:fs';
+const extensions=fs.readFileSync('native/document-extensions.txt','utf8').trim().split(/\s+/);
+if(extensions.some(ext=>! /^[a-z0-9]+$/.test(ext)))throw Error('Invalid document extension');
+const file=process.argv[2];
+fs.writeFileSync(file,fs.readFileSync(file,'utf8').replace('<!-- HARNESS_TEXT_EXTENSIONS -->',extensions.map(ext=>`<string>${ext}</string>`).join('')));
+JS
 swiftc -target "$arch-apple-macosx13.0" native/App.swift -o "$bundle/Contents/MacOS/HarnessIDE" -framework Cocoa -framework WebKit
 codesign --force --sign - "$resources/runtime/node"
 codesign --force --sign - "$resources/app/node_modules/node-pty/prebuilds/darwin-$pty_arch/pty.node"
