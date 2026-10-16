@@ -399,3 +399,6 @@ macOS Finder 的“打开方式”支持 Harness IDE：注册 Markdown、文本�
 | 前端与网页 | js、mjs、cjs、jsx、cts、html、htm、css、scss、sass、less、vue、svelte |
 | 脚本与源码 | py、pyw、sh、bash、zsh、fish、sql、java、c、h、cc、cpp、cxx、hpp、hxx、cs、go、rs、rb、php、swift、kt、kts、dart、lua、pl、r |
 | 其他文本 | tex、bib、diff、patch、graphql、gql、dockerfile、sshconfig |
+
+
+目录占用说明：`~/.hot_plugging` 包含源码、依赖、Git 历史、用户文件历史以及热更新缓存，不等同于应用安装包。`history/` 是可恢复的文件版本，按既有保留规则管理，不作为旧包手动删除。缓存清理必须保留已安装基线、当前发行和仍被插件入口/活动进程引用的版本；应用完全退出后，可将插件入口刷新到当前发行再回收失去引用的旧发行。Finder 的 `.DS_Store` 和 AppleDouble `._*` 文件不参与版本哈希，监听器也忽略这些元数据事件，避免浏览目录时生成无意义的热更新包。

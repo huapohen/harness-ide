@@ -3,7 +3,7 @@ import entries from '../plugins.config.js';
 import fs from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 const hash=s=>createHash('sha256').update(s).digest('hex');
-const files=async dir=>{const out=[];for(const entry of await fs.readdir(dir,{withFileTypes:true})){const p=dir+'/'+entry.name;if(entry.isDirectory())out.push(...await files(p));else out.push(p);}return out.sort();};
+const files=async dir=>{const out=[];for(const entry of await fs.readdir(dir,{withFileTypes:true})){if(entry.name==='.DS_Store'||entry.name.startsWith('._'))continue;const p=dir+'/'+entry.name;if(entry.isDirectory())out.push(...await files(p));else out.push(p);}return out.sort();};
 const digest=async paths=>hash((await Promise.all(paths.map(async p=>p+'\n'+(await fs.readFile(p,'utf8')).replace(p==='native/App.swift'?/        let viewItem = NSMenuItem\(\);[\s\S]*?(?=        NSApplication.shared.mainMenu = menu)/:/(?!)/g,'')))).join('\n'));
 const js=await digest([...(await files('src')).filter(p=>!p.endsWith('.css')),'plugins.config.js',...await files('public'),...await files('shared')]);
 const css=hash(await fs.readFile('src/style.css'));
