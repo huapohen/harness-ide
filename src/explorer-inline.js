@@ -1,9 +1,10 @@
+import {inputDragSelection} from './input-drag-selection.js';
 import {el} from './ui.js';
 export function inlineCreate(host,dir,directory,value,submit){
  const parent=dir==='.'?null:[...host.querySelectorAll('.file-row')].find(r=>r.dataset.path===dir);
  const target=parent?.parentElement.querySelector(':scope > .tree-children')||host.querySelector('.tree-root-children');
  if(!target)throw Error('目录尚未展开');
- const row=el('div','file-row explorer-create'),input=el('input','explorer-rename');row.style.paddingLeft=parent?(parseFloat(parent.style.paddingLeft)+10)+'px':'18px';input.value=value;input.setAttribute('aria-label',directory?'Folder name':'File name');row.append(input);target.prepend(row);
+ const row=el('div','file-row explorer-create'),input=el('input','explorer-rename');row.style.paddingLeft=parent?(parseFloat(parent.style.paddingLeft)+10)+'px':'18px';inputDragSelection(input);input.onmousedown=e=>e.stopPropagation();input.value=value;input.setAttribute('aria-label',directory?'Folder name':'File name');row.append(input);target.prepend(row);
  let done=false,busy=false;const cancel=()=>{if(done||busy)return;done=true;input.setCustomValidity('');row.remove();};
  row.onclick=row.ondblclick=row.onpointerdown=e=>e.stopPropagation();
  input.oninput=()=>input.setCustomValidity('');input.onblur=cancel;

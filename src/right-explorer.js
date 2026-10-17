@@ -1,3 +1,4 @@
+import {inputDragSelection} from './input-drag-selection.js';
 import {imageNavigation} from './explorer-image-navigation.js';
 import {retargetMovedTabs} from './explorer-move-tabs.js';
 import {autoRefreshExplorer} from './explorer-auto-refresh.js';
@@ -67,7 +68,7 @@ export async function rightExplorer(ctx){
   const finish=async commit=>{if(done||input.disabled)return;if(!commit||input.value===name){done=true;input.setCustomValidity('');label.textContent=name;row.focus();return;}const next=input.value.trim();if(!next||next==='.'||next==='..'||/[\\/\0]/.test(next)){input.setCustomValidity('请输入有效名称');input.reportValidity();return;}input.disabled=true;
    try{check();const before=absolute(p),destination=join(parent(p),next),after=absolute(destination),tabs=affected(p),primaryRoot=ctx.get('workspace').info().root;await manage('rename',p,{destination});done=true;for(const t of tabs){if(t.external)t.acceptRename?.(after+t.path.slice(before.length),(after+t.path.slice(before.length)).split('/').at(-1));else{const root=primaryRoot,newPath=(after+(root+'/'+t.path).slice(before.length)).slice(root.length+1);t.acceptRename?.(newPath,newPath.split('/').at(-1));}}check();for(const x of [...expanded])if(x===p||x.startsWith(p+'/')){expanded.delete(x);expanded.add(destination+x.slice(p.length));}selected=destination;multi=new Set([destination]);await persist();await render();wb.render();}catch(e){input.disabled=false;input.setCustomValidity(e.message);input.reportValidity();input.focus();}
   };
-  input.onblur=()=>finish(false);input.onpointerdown=e=>e.stopPropagation();input.oninput=()=>input.setCustomValidity('');input.onclick=input.ondblclick=e=>e.stopPropagation();input.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();finish(e.key==='Enter').catch(logMessage);}};
+  inputDragSelection(input);input.onmousedown=e=>e.stopPropagation();input.onblur=()=>finish(false);input.onpointerdown=e=>e.stopPropagation();input.oninput=()=>input.setCustomValidity('');input.onclick=input.ondblclick=e=>e.stopPropagation();input.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();finish(e.key==='Enter').catch(logMessage);}};
   requestAnimationFrame(()=>{if(input.isConnected){input.focus();const dot=name.lastIndexOf('.');input.setSelectionRange(0,row.dataset.directory==='true'||dot<=0?name.length:dot);}});
  }
  async function copyPath(p){const text=absolute(p),handler=window.webkit?.messageHandlers.clipboard;if(handler)handler.postMessage({id:crypto.randomUUID(),action:'write',text});else await navigator.clipboard.writeText(text);}
