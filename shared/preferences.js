@@ -1,0 +1,2 @@
+import {themePalettes} from './theme-palettes.js';
+export const preferenceKeys=['tab-tooltip-delay','office-open-mode','terminal-show-identity','editor-word-wrap','selection-copy-edit','selection-copy-preview','ide-zoom','harness-theme','harness-theme-mode','harness-backgrounds-one-dark-pro','harness-backgrounds-light',...themePalettes.themes.flatMap(({id})=>['light','dark'].map(mode=>'harness-backgrounds-'+id+'-'+mode))];

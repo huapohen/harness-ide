@@ -386,3 +386,6 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
 [data-settings-section="file-associations"] .association-toolbar>span{flex:1}
 .association-form[hidden]{display:none}
 .association-toolbar input{background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:6px;font-size:11px}
+/* Imported palettes keep semantic selection and preview surfaces in the same hue. */
+:root[data-palette]:not([data-palette=""]) .file-row.selected{background:var(--selected)}
+:root[data-palette]:not([data-palette=""]) .markdown{--md-surface:var(--code);--md-grid:var(--border);--headingColor:var(--accent)}
