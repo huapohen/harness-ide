@@ -40,3 +40,11 @@
 ## 最新全量检查
 
 150 项测试通过。修复预览资源回收、迟到图片错误、表格重复链接及独立缓存清理的后端租约保护，增加不可变发行资源去重。详细验证与体积数据见 [全量检查报告](full-audit-2026-09-13.md)。
+
+## 2026-10-24 Command+F 保持源码视图滚动位置
+
+Command+F / Command+Option+F 每次都经 `documents.show()` 摘除并重挂 CodeMirror 编辑器，`.cm-scroller.scrollTop` 归零，视口跳回顶行，并把 0 写回文档位置记录。现在同模式的 `showMode` 直接复用已挂载编辑器，`show()` 重建前记录并回写 `scrollTop/scrollLeft`。
+
+216 项测试通过。隔离实例（独立 `HARNESS_SETTINGS_DIR` / `HARNESS_UPDATES_DIR` / `HARNESS_HISTORY_DIR`）+ 真实快捷键实测：400 行文件光标第 250 行、`scrollTop` 4736，两次 Command+F、Command+Option+F、Escape 开关面板后均保持；搜索导航仍可跳转到命中行；关闭后重开标签恢复到 4736 / 第 340 行；持久化记录不再被写成 0。Markdown 预览（滚动 329 px，最大 329）切源码后落在第 68 行，与块级插值一致。热更新交接后标签与活动文件滚动保留。版本 473eef7af9b1aed31fb0 已发布，runtime 未变（24ee8b12…），不需要重建应用。
+
+已知遗留（本次未改）：热更新快照对整个非活动标签的 `scrollDOM.scrollTop` 读取为 0，交接后该标签视口回到顶行并覆盖持久化记录；修复方向是快照改用 `sessionView()`（不可见时回退 `lastPosition`）。
