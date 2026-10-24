@@ -47,4 +47,6 @@ Command+F / Command+Option+F 每次都经 `documents.show()` 摘除并重挂 Cod
 
 216 项测试通过。隔离实例（独立 `HARNESS_SETTINGS_DIR` / `HARNESS_UPDATES_DIR` / `HARNESS_HISTORY_DIR`）+ 真实快捷键实测：400 行文件光标第 250 行、`scrollTop` 4736，两次 Command+F、Command+Option+F、Escape 开关面板后均保持；搜索导航仍可跳转到命中行；关闭后重开标签恢复到 4736 / 第 340 行；持久化记录不再被写成 0。Markdown 预览（滚动 329 px，最大 329）切源码后落在第 68 行，与块级插值一致。热更新交接后标签与活动文件滚动保留。版本 473eef7af9b1aed31fb0 已发布，runtime 未变（24ee8b12…），不需要重建应用。
 
+输入查找内容时的行为按 VS Code 1.140 实测对齐（隔离 `--user-data-dir` + CDP，真实按键）：面板打开时记录当前选区末端作为查找起点；输入后选中并 `scrollIntoView` 该起点之后的第一处匹配，继续输入保持同一匹配而不是向后走。实测对照：VS Code 光标 Ln 250 输入 `aa` 选中 Ln 251，改输入 `aab` 仍停在 Ln 251（不跳到 Ln 255 的下一处），输入 `filler 400` 跳到 Ln 400 并选中 10 字符；清空查询、无结果、Escape 都不移动视口。Harness 同一用例结果一致：打开面板保留 4756，`aa`/`aab` 停在第 251 行，`filler 400` 滚到 6997 并选中第 400 行，清空/无结果/Escape 均保持，Enter/Shift+Enter 在 100 与 251 行之间切换，关闭重开恢复到 1890/第 100 行。
+
 已知遗留（本次未改）：热更新快照对整个非活动标签的 `scrollDOM.scrollTop` 读取为 0，交接后该标签视口回到顶行并覆盖持久化记录；修复方向是快照改用 `sessionView()`（不可见时回退 `lastPosition`）。

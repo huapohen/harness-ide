@@ -1,14 +1,16 @@
 import {preserveCase} from './preserve-case.js';
 import {SearchQuery,getSearchQuery,setSearchQuery,findNext,findPrevious,replaceNext,replaceAll,closeSearchPanel,selectMatches} from '@codemirror/search';
+import {EditorSelection} from '@codemirror/state';
+import {EditorView} from '@codemirror/view';
 import {el,button} from './ui.js';
 export function createFindPanel(view){
  const dom=el('div','find-widget'),first=el('div','find-row'),second=el('div','find-row find-replace-row');
  const input=el('input','find-input');input.placeholder='Find';input.setAttribute('aria-label','查找');input.setAttribute('main-field','true');
  const replacement=el('input','find-input');replacement.placeholder='Replace';replacement.setAttribute('aria-label','替换为');
- const counter=el('span','find-count');let sensitive=false,word=false,regex=false,keepCase=false,scope=null,expanded=!!view.harnessReplace;
+ const counter=el('span','find-count');let sensitive=false,word=false,regex=false,keepCase=false,scope=null,expanded=!!view.harnessReplace,anchor=0;
  const toggle=button('›','展开 / 收起替换',()=>showReplace(!expanded),'replace-toggle');
- const controls=[['Aa','区分大小写',()=>sensitive=!sensitive],['ab','全字匹配',()=>word=!word],['.*','使用正则表达式',()=>regex=!regex]].map(([label,title,run])=>button(label,title,()=>{run();commit();},'find-option'));
- const scoped=button('≡','仅在选区查找',()=>{scope=scope?null:view.state.selection.ranges.filter(r=>!r.empty).map(r=>({from:r.from,to:r.to}));if(!scope?.length)scope=null;commit();},'find-option');
+ const controls=[['Aa','区分大小写',()=>sensitive=!sensitive],['ab','全字匹配',()=>word=!word],['.*','使用正则表达式',()=>regex=!regex]].map(([label,title,run])=>button(label,title,()=>{run();commit();revealMatch();},'find-option'));
+ const scoped=button('≡','仅在选区查找',()=>{scope=scope?null:view.state.selection.ranges.filter(r=>!r.empty).map(r=>({from:r.from,to:r.to}));if(!scope?.length)scope=null;commit();revealMatch();},'find-option');
  const all=button('','全选匹配',()=>{selectMatches(view);view.focus();},'find-icon find-select-all');
  all.innerHTML='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 5V2h3M11 2h3v3M14 11v3h-3M5 14H2v-3M5 5h6v6H5z"/></svg>';
  const searchBox=el('div','find-search-box'),searchOptions=el('div','find-search-options');searchOptions.append(...controls);searchBox.append(input,searchOptions);
@@ -30,12 +32,14 @@ export function createFindPanel(view){
  dom.append(first,second);
  function showReplace(value){expanded=value;second.hidden=!value;toggle.textContent=value?'⌄':'›';toggle.setAttribute('aria-expanded',String(value));view.harnessReplace=value;}
  function commit(){view.dispatch({effects:setSearchQuery.of(new SearchQuery({search:input.value,replace:replacement.value,caseSensitive:sensitive,wholeWord:word,regexp:regex,literal:!regex,test:scope?(_,state,from,to)=>scope.some(r=>from>=r.from&&to<=r.to):undefined}))});}
+ // Visual Studio Code behaviour: typing selects the first match at or after the caret the panel was opened on, without walking forward as the query is refined.
+ function revealMatch(){const query=getSearchQuery(view.state);if(!query.valid||!query.search)return;const start=Math.min(anchor,view.state.doc.length),match=query.create().nextMatch(view.state,start,start);if(!match)return;const main=view.state.selection.main;if(main.from===match.from&&main.to===match.to)return;const selection=EditorSelection.single(match.from,match.to);view.dispatch({selection,effects:EditorView.scrollIntoView(selection.main),userEvent:'select.search'});}
  function draw(){const query=getSearchQuery(view.state);if(input.value!==query.search)input.value=query.search;if(replacement.value!==query.replace)replacement.value=query.replace;sensitive=query.caseSensitive;word=query.wholeWord;regex=query.regexp;[sensitive,word,regex].forEach((active,i)=>{controls[i].classList.toggle('on',active);controls[i].setAttribute('aria-pressed',String(active));});scoped.classList.toggle('on',!!scope);
   let count=0,index=0;const cursor=query.valid?query.getCursor(view.state):null;if(cursor)for(let next=cursor.next();!next.done&&count<10000;next=cursor.next()){count++;if(next.value.from===view.state.selection.main.from)index=count;}
   all.disabled=!count;counter.textContent=!query.search?'':!query.valid?'无效正则':count?`${index||'–'} / ${count}${count===10000?'+':''}`:'No results';input.setAttribute('aria-invalid',String(!!query.search&&!query.valid));
  }
- input.oninput=commit;replacement.oninput=commit;
+ input.oninput=e=>{commit();if(!e.isComposing)revealMatch();};input.addEventListener('compositionend',()=>{commit();revealMatch();});replacement.oninput=commit;
  dom.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();closeSearchPanel(view);view.focus();}else if(e.key==='Enter'){e.preventDefault();if(e.altKey){selectMatches(view);view.focus();}else if(e.target===replacement)replaceWithCase(false);else(e.shiftKey?findPrevious:findNext)(view);}};
  showReplace(expanded);draw();view.harnessFindPanel={showReplace};
- return {dom,top:true,mount(){input.focus();input.select();},update(update){if(scope&&update.docChanged)scope=scope.map(r=>({from:update.changes.mapPos(r.from,1),to:update.changes.mapPos(r.to,-1)}));draw();},destroy(){delete view.harnessFindPanel;}};
+ return {dom,top:true,mount(){anchor=view.state.selection.main.to;input.focus();input.select();},update(update){if(scope&&update.docChanged)scope=scope.map(r=>({from:update.changes.mapPos(r.from,1),to:update.changes.mapPos(r.to,-1)}));draw();},destroy(){delete view.harnessFindPanel;}};
 }
