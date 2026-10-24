@@ -33,6 +33,9 @@ export function createFindPanel(view){
  function showReplace(value){expanded=value;second.hidden=!value;toggle.textContent=value?'⌄':'›';toggle.setAttribute('aria-expanded',String(value));view.harnessReplace=value;}
  function commit(){view.dispatch({effects:setSearchQuery.of(new SearchQuery({search:input.value,replace:replacement.value,caseSensitive:sensitive,wholeWord:word,regexp:regex,literal:!regex,test:scope?(_,state,from,to)=>scope.some(r=>from>=r.from&&to<=r.to):undefined}))});}
  // Visual Studio Code behaviour: typing selects the first match at or after the caret the panel was opened on, without walking forward as the query is refined.
+ // Visual Studio Code seeds a closed find widget from the selection or the word under the caret (scanning left over whitespace), without moving the editor.
+ function wordUnderCaret(){const state=view.state,head=state.selection.main.head,from=state.doc.lineAt(head).from;for(let pos=head;pos>=from;pos--){const word=state.wordAt(pos);if(word)return word;}return null;}
+ function seed(){const state=view.state;if(!state.selection.main.empty)return;const word=wordUnderCaret();if(!word)return;const text=state.sliceDoc(word.from,word.to);if(!text)return;if(input.value!==text){input.value=text;commit();}input.select();}
  function revealMatch(){const query=getSearchQuery(view.state);if(!query.valid||!query.search)return;const start=Math.min(anchor,view.state.doc.length),match=query.create().nextMatch(view.state,start,start);if(!match)return;const main=view.state.selection.main;if(main.from===match.from&&main.to===match.to)return;const selection=EditorSelection.single(match.from,match.to);view.dispatch({selection,effects:EditorView.scrollIntoView(selection.main),userEvent:'select.search'});}
  function draw(){const query=getSearchQuery(view.state);if(input.value!==query.search)input.value=query.search;if(replacement.value!==query.replace)replacement.value=query.replace;sensitive=query.caseSensitive;word=query.wholeWord;regex=query.regexp;[sensitive,word,regex].forEach((active,i)=>{controls[i].classList.toggle('on',active);controls[i].setAttribute('aria-pressed',String(active));});scoped.classList.toggle('on',!!scope);
   let count=0,index=0;const cursor=query.valid?query.getCursor(view.state):null;if(cursor)for(let next=cursor.next();!next.done&&count<10000;next=cursor.next()){count++;if(next.value.from===view.state.selection.main.from)index=count;}
@@ -40,6 +43,6 @@ export function createFindPanel(view){
  }
  input.oninput=e=>{commit();if(!e.isComposing)revealMatch();};input.addEventListener('compositionend',()=>{commit();revealMatch();});replacement.oninput=commit;
  dom.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();closeSearchPanel(view);view.focus();}else if(e.key==='Enter'){e.preventDefault();if(e.altKey){selectMatches(view);view.focus();}else if(e.target===replacement)replaceWithCase(false);else(e.shiftKey?findPrevious:findNext)(view);}};
- showReplace(expanded);draw();view.harnessFindPanel={showReplace};
- return {dom,top:true,mount(){anchor=view.state.selection.main.to;input.focus();input.select();},update(update){if(scope&&update.docChanged)scope=scope.map(r=>({from:update.changes.mapPos(r.from,1),to:update.changes.mapPos(r.to,-1)}));draw();},destroy(){delete view.harnessFindPanel;}};
+ showReplace(expanded);draw();view.harnessFindPanel={showReplace,seed};
+ return {dom,top:true,seed,mount(){anchor=view.state.selection.main.to;input.focus();input.select();},update(update){if(scope&&update.docChanged)scope=scope.map(r=>({from:update.changes.mapPos(r.from,1),to:update.changes.mapPos(r.to,-1)}));draw();},destroy(){delete view.harnessFindPanel;}};
 }
