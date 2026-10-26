@@ -1,0 +1,5 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {installExplorerActivation} from '../src/explorer-activation.js';
+const event=(time=0,x=0)=>({button:0,pointerId:1,clientX:x,clientY:0,timeStamp:time,detail:1,target:{closest:()=>null}});
+function row(run){const n={addEventListener(k,f){this[k]=f;}};installExplorerActivation(n,run);return n;}
+test('rapid taps on different rows activate without click and do not double-toggle',()=>{const calls=[];const a=row(()=>calls.push('a')),b=row(()=>calls.push('b'));a.pointerdown(event());a.pointerup(event(10));b.pointerdown(event(20));b.pointerup(event(30));b.onclick(event(31));a.onclick(event(32));assert.deepEqual(calls,['a','b']);});
+test('drags, cancelled gestures and rename inputs do not activate rows',()=>{let calls=0;const a=row(()=>calls++);a.pointerdown(event());a.pointermove(event(10,20));a.pointerup(event(20,20));a.pointerdown(event());a.pointercancel();a.pointerup(event());a.pointerdown({...event(),target:{closest:()=>({})}});a.pointerup(event());assert.equal(calls,0);a.onclick({...event(),detail:0});assert.equal(calls,1);});
