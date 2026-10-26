@@ -7,8 +7,15 @@ export function hasFileClipboard(){return !!clipboard?.paths.length;}
 export async function pasteSelection(target){const saved=clipboard;if(!saved)return;if(saved.identity!==saved.source.identity())throw Error('源目录已切换，请重新复制或剪切');await saved.source.transfer(saved.paths,target,saved.cut);if(saved.cut&&clipboard===saved)clipboard=null;}
 export function transferPlan(paths,dir,entries,sameRoot,cut){
  const names=new Set(entries.map(e=>e.name)),planned=new Set();
- return topLevelPaths(paths).flatMap(path=>{const name=path.split('/').at(-1),destination=dir==='.'?name:dir+'/'+name;
+ return topLevelPaths(paths).flatMap(path=>{let name=path.split('/').at(-1),destination=dir==='.'?name:dir+'/'+name;
  if(sameRoot&&destination===path&&cut)return [];
+ if(sameRoot&&destination===path&&!cut){
+  const directory=entries.find(e=>e.name===name)?.directory;
+  const dot=directory?-1:name.lastIndexOf('.'),ext=dot>0?name.slice(dot):'',stem=dot>0?name.slice(0,dot):name;
+  const match=stem.match(/^(.*) copy(?: (\d+))?$/),base=match?match[1]:stem;let number=match?Number(match[2]||1)+1:1;
+  do{name=base+' copy'+(number===1?'':' '+number)+ext;number++;}while(names.has(name)||planned.has(name));
+  destination=dir==='.'?name:dir+'/'+name;
+ }
  if(sameRoot&&(destination===path||destination.startsWith(path+'/')))throw Error('不能复制或移动到自身或子目录：'+path);
  if(names.has(name)||planned.has(name))throw Error('目标已存在或选中文件重名：'+name);
  planned.add(name);return [{path,destination}];});
