@@ -6,7 +6,7 @@ export function withHistoryLock(root,fn){
  task.finally(()=>{if(queues.get(root)===task)queues.delete(root);}).catch(()=>{});return task;
 }
 const digest=/^[a-f0-9]{64}$/;
-export async function pruneHistoryUnlocked(root,{now=Date.now(),maxAge=30*86400000,maxVersions=50,maxBytes=1024*1024*1024}={}){
+export async function pruneHistoryUnlocked(root,{now=Date.now(),maxAge=30*86400000,maxVersions=50,maxBytes=1024*1024*1024,batchBytes=400*1024*1024}={}){
  let directories;try{directories=await fs.readdir(root,{withFileTypes:true});}catch(e){if(e.code==='ENOENT')return {removed:0,bytes:0};throw e;}
  const records=[],blobs=new Map();let removed=0;
  for(const dir of directories){if(!dir.isDirectory()||!digest.test(dir.name))continue;const scope=path.join(root,dir.name),entries=await fs.readdir(scope,{withFileTypes:true});const local=[];let corrupt=false;
@@ -19,10 +19,12 @@ export async function pruneHistoryUnlocked(root,{now=Date.now(),maxAge=30*864000
  records.sort((a,b)=>b.time-a.time||a.file.localeCompare(b.file));const counts=new Map(),keep=[],drop=[];
  for(const r of records){const n=counts.get(r.group)||0;if(now-r.time>maxAge||n>=maxVersions)drop.push(r);else{counts.set(r.group,n+1);keep.push(r);const b=blobs.get(r.blob);if(b)b.refs++;}}
  let bytes=keep.reduce((n,r)=>n+r.metaBytes,0)+[...blobs.values()].filter(b=>b.refs).reduce((n,b)=>n+b.size,0);
- while(bytes>maxBytes&&keep.length){const r=keep.pop();drop.push(r);bytes-=r.metaBytes;const b=blobs.get(r.blob);if(b&&!--b.refs)bytes-=b.size;}
+ const target=bytes>maxBytes?Math.max(0,maxBytes-batchBytes):maxBytes;
+ while(bytes>target&&keep.length){const r=keep.pop();drop.push(r);bytes-=r.metaBytes;const b=blobs.get(r.blob);if(b&&!--b.refs)bytes-=b.size;}
  // Remove indexes before unreferenced data, so interruption cannot leave retained indexes dangling.
- for(const r of drop){await fs.rm(r.file,{force:true});removed++;}
- for(const [file,b]of blobs)if(!b.refs)await fs.rm(file,{force:true});
+ const removeBatch=async files=>{for(let i=0;i<files.length;i+=32)await Promise.all(files.slice(i,i+32).map(file=>fs.rm(file,{force:true})));};
+ await removeBatch(drop.map(r=>r.file));removed=drop.length;
+ await removeBatch([...blobs].filter(([,b])=>!b.refs).map(([file])=>file));
  return {removed,bytes};
 }
 export const pruneHistory=(root,options)=>withHistoryLock(root,()=>pruneHistoryUnlocked(root,options));
