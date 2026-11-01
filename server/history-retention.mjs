@@ -6,7 +6,7 @@ export function withHistoryLock(root,fn){
  task.finally(()=>{if(queues.get(root)===task)queues.delete(root);}).catch(()=>{});return task;
 }
 const digest=/^[a-f0-9]{64}$/;
-export async function pruneHistoryUnlocked(root,{now=Date.now(),maxAge=30*86400000,maxVersions=50,maxBytes=1024*1024*1024,batchBytes=400*1024*1024}={}){
+export async function pruneHistoryUnlocked(root,{now=Date.now(),maxAge=30*86400000,maxVersions=20,maxBytes=500*1024*1024,batchBytes=300*1024*1024}={}){
  let directories;try{directories=await fs.readdir(root,{withFileTypes:true});}catch(e){if(e.code==='ENOENT')return {removed:0,bytes:0};throw e;}
  const records=[],blobs=new Map();let removed=0;
  for(const dir of directories){if(!dir.isDirectory()||!digest.test(dir.name))continue;const scope=path.join(root,dir.name),entries=await fs.readdir(scope,{withFileTypes:true});const local=[];let corrupt=false;
