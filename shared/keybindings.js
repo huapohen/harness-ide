@@ -31,7 +31,7 @@ export const defaults = [
  ['cmd+shift+p','workbench.palette'], ['cmd+b','workbench.sidebar'],
  ['cmd+c','edit.copy','true'], ['ctrl+c','edit.copy','!terminalFocus || terminalHasSelection'],
  ['cmd+v','edit.paste','true'], ['ctrl+v','edit.paste','true'], ['cmd+x','edit.cut','true'], ['ctrl+x','edit.cut','true'],
- ['cmd+a','terminal.dock'], ['ctrl+a','edit.selectAll','true'], ['cmd+z','edit.undo','textInputFocus || imageFocus'],
+ ['cmd+a','terminal.dock'], ['ctrl+a','edit.selectAll','!terminalFocus'], ['cmd+z','edit.undo','textInputFocus || imageFocus'],
  ['cmd+shift+z','terminal.toggleMaximize'], ['cmd+y','edit.redo','textInputFocus || imageFocus'],
  ['ctrl+d','editor.duplicateLine','editorTextFocus'],
  ['cmd+shift+k','editor.deleteLine','editorTextFocus'], ['shift+d','editor.deleteLine','editorTextFocus'],
