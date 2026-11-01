@@ -147,7 +147,7 @@
   {
     "key": "ctrl+a",
     "command": "edit.selectAll",
-    "when": "true"
+    "when": "!terminalFocus"
   },
   {
     "key": "cmd+a",
