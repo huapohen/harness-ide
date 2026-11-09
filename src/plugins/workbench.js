@@ -1,3 +1,4 @@
+import {tabVisits} from '../tab-visits.js';
 import {tabTooltip} from '../tab-tooltip.js';
 import {savePreference} from '../preferences.js';
 import {replaceSidebarBody} from '../sidebar-panel.js';
@@ -16,7 +17,7 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
  let zoom=Math.max(.5,Math.min(2,Number(localStorage.getItem('ide-zoom'))||1));
  const applyZoom=()=>{savePreference('ide-zoom',String(zoom));const handler=window.webkit?.messageHandlers.windowChrome;if(handler)handler.postMessage({action:'pageZoom',factor:zoom});else{document.documentElement.style.zoom=String(zoom);root.style.height=(innerHeight/zoom)+'px';}window.dispatchEvent(new Event('resize'));};
  applyZoom();
- const commands=new Map(),tabs=[],panels=new Map(),multiTabs=new Set();let hiddenPanels;try{hiddenPanels=new Set(JSON.parse(localStorage.getItem('hidden-panels')||'[]'));}catch{hiddenPanels=new Set();}let tabSelectionAnchor=null,active=null,docked=null,lastDock=null,dockMaximized=false,sidebarId='explorer',closing=false;
+ const commands=new Map(),tabs=[],panels=new Map(),multiTabs=new Set();let hiddenPanels;try{hiddenPanels=new Set(JSON.parse(localStorage.getItem('hidden-panels')||'[]'));}catch{hiddenPanels=new Set();}let tabSelectionAnchor=null,active=null,docked=null,lastDock=null,dockMaximized=false,sidebarId='explorer',closing=false,bulkClosing=false;
  const $=s=>root.querySelector(s);
  const sidebarBody=$('#sidebar-body');sidebarBody.onpointermove=e=>sidebarBody.classList.toggle('scrollbar-near',sidebarBody.getBoundingClientRect().right-e.clientX<22);sidebarBody.onpointerleave=()=>sidebarBody.classList.remove('scrollbar-near');
  let activityOrder;try{activityOrder=JSON.parse(localStorage.getItem('activity-order')||'[]');if(!Array.isArray(activityOrder))activityOrder=[];}catch{activityOrder=[];}
@@ -25,6 +26,7 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
  let topTabAlignment='free';const layoutAPI=ctx.get('api');let saveOrder=Promise.resolve();
  try{const saved=await layoutAPI('settings/layout/read');applyFonts(saved.font);if(Array.isArray(saved.hiddenPanels)){hiddenPanels=new Set(saved.hiddenPanels);localStorage.setItem('hidden-panels',JSON.stringify([...hiddenPanels]));}else if(hiddenPanels.size)await layoutAPI('settings/layout/write',{hiddenPanels:[...hiddenPanels]});if(['free','left','right','center'].includes(saved.topTabAlignment))topTabAlignment=saved.topTabAlignment;if(saved.secondaryWidth)$('.secondary-sidebar').style.width=saved.secondaryWidth+'px';Object.assign(visibility,saved.visibility);applyVisibility();if(Array.isArray(saved.activityOrder)){activityOrder=saved.activityOrder;localStorage.setItem('activity-order',JSON.stringify(activityOrder));}else if(activityOrder.length)await layoutAPI('settings/layout/write',{activityOrder});}catch(e){logMessage('Unable to load sidebar order: '+e.message);}
  const persistOrder=()=>{const order=[...activityOrder];saveOrder=saveOrder.catch(()=>{}).then(()=>layoutAPI('settings/layout/write',{activityOrder:order})).catch(e=>logMessage('Unable to save sidebar order: '+e.message));};
+ const visits=tabVisits();ctx.on('workspace.changed',()=>visits.clear());
  const current=()=>tabs.find(t=>t.element.contains(document.activeElement))||active;
  function render(preserveTabs=false){
   const previewControl=$('.preview-toggle');if(previewControl){previewControl.disabled=!active?.canPreview?.()||! /\.(md|markdown|html|htm)$/i.test(active?.path||'');previewControl.setAttribute('aria-pressed',String(active?.getMode?.()==='preview'));}
@@ -58,8 +60,12 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
  }
  function layoutTopTabs(){const lane=$('.top-tabs'),nodes=[...lane.children];for(const item of topTabLayout(nodes.map(node=>({node,x:tabs.find(t=>t.id===node.dataset.tabId)?.topX||0,width:node.getBoundingClientRect().width})),lane.clientWidth,4,topTabAlignment)){item.node.style.left=item.left+'px';}}
  const topResize=new ResizeObserver(layoutTopTabs);topResize.observe($('.top-tabs'));ctx.effect(()=>topResize.disconnect());
- function select(t){if(!t)return;if(active!==t)active?.rememberPosition?.();if(docked&&dockMaximized){lastDock=docked;docked=null;}if(docked===t||(t.group&&docked?.group===t.group))docked=null;active=t;render(root.querySelectorAll('.tab').length===tabs.length);t.focus?.();}
- function remove(t){multiTabs.delete(t);if(!tabs.includes(t))return;if(t.group){const group=t.group;group.tree=removeLeaf(group.tree,t);delete t.group;if(group.tree)drawGroup(group);else group.element.remove();}t.dispose?.();t.element.remove();const index=tabs.indexOf(t);tabs.splice(index,1);if(docked===t)docked=null;if(active===t)active=tabs[Math.min(index,tabs.length-1)]||null;if(active===docked)docked=null;render();}
+ function select(t){if(!t)return;if(active!==t)active?.rememberPosition?.();if(docked&&dockMaximized){lastDock=docked;docked=null;}if(docked===t||(t.group&&docked?.group===t.group))docked=null;active=t;visits.visit(t);render(root.querySelectorAll('.tab').length===tabs.length);t.focus?.();}
+ function remove(t,{replacing=false}={}){const foreground=active===t||docked===t&&(dockMaximized||visits.last()?.tab===t);if(replacing)visits.replaced(t);else visits.forget(t);multiTabs.delete(t);if(!tabs.includes(t))return;if(t.group){const group=t.group;group.tree=removeLeaf(group.tree,t);delete t.group;if(group.tree)drawGroup(group);else group.element.remove();}t.dispose?.();t.element.remove();const index=tabs.indexOf(t);tabs.splice(index,1);if(docked===t)docked=null;if(foreground){
+   const recent=visits.last();active=recent?.tab||tabs[Math.min(index,tabs.length-1)]||null;
+   if(dockMaximized||active===docked)docked=null;
+   if(!replacing&&!bulkClosing&&recent?.file){const file=visits.takeFile();api.run('file.open')(file.path,{...file,temporary:true}).catch(logMessage);}
+  }if(active===docked)docked=null;render();if(foreground&&!replacing)active?.focus?.();}
  function drawGroup(group){
   const draw=node=>{if(!node.children)return node.element;const box=el('div','terminal-split '+node.direction),parts=node.children.map(draw);const ratio=()=>{parts[0].style.flex=String(node.ratio||.5)+' 1 0px';parts[1].style.flex=String(1-(node.ratio||.5))+' 1 0px';};ratio();const sash=el('div','split-sash');sash.role='separator';sash.tabIndex=0;sash.setAttribute('aria-label','调整分屏大小');sash.setAttribute('aria-orientation',node.direction==='vertical'?'vertical':'horizontal');sash.onpointerdown=e=>{e.preventDefault();sash.setPointerCapture(e.pointerId);};sash.onpointermove=e=>{if(!sash.hasPointerCapture(e.pointerId))return;const rect=box.getBoundingClientRect(),vertical=node.direction==='vertical';node.ratio=Math.max(.1,Math.min(.9,vertical?(e.clientX-rect.left)/rect.width:(e.clientY-rect.top)/rect.height));ratio();};sash.onpointerup=e=>{if(sash.hasPointerCapture(e.pointerId))sash.releasePointerCapture(e.pointerId);};sash.ondblclick=()=>{node.ratio=.5;ratio();};sash.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();node.ratio=Math.max(.1,Math.min(.9,(node.ratio||.5)+(['ArrowLeft','ArrowUp'].includes(e.key)?-.05:.05)));ratio();};box.append(parts[0],sash,parts[1]);return box;};
   group.element.replaceChildren(draw(group.tree));
@@ -68,7 +74,7 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
   let group=target.group;
   if(!group){group={tree:target,element:el('div','terminal-group')};target.group=group;}
   added.group=group;group.tree=splitLeaf(group.tree,target,added,direction);drawGroup(group);
-  if(docked===target)docked=null;active=added;render();added.focus?.();
+  if(docked===target)docked=null;active=added;visits.visit(added);render();added.focus?.();
  }
  async function prepare(t){
   await api.flushFileOperations?.();
@@ -81,7 +87,7 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
   try{if(!await prepare(t)||t.pinned)return false;if(t.kind==='terminal'){const result=await t.requestClose();if(result.busy)return false;return true;}remove(t);return true;}finally{closing=false;}
  }
  async function closeAll(targets=tabs){
-  if(closing)return false;closing=true;
+  if(closing)return false;closing=true;bulkClosing=true;
   try{
    const snapshot=closableTabs([...targets]).filter(t=>tabs.includes(t));
    // Busy preflight happens before any file prompt or destructive close.
@@ -91,7 +97,7 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
    for(const t of snapshot.filter(t=>t.kind==='terminal')){const result=await t.requestClose();if(result.busy)return false;}
    for(const t of snapshot.filter(t=>t.kind!=='terminal'&&!t.pinned))remove(t);
    return true;
-  }finally{closing=false;}
+  }finally{closing=false;bulkClosing=false;}
  }
  function pin(t=current()){if(!t)return;t.pinned=!t.pinned;tabs.sort((a,b)=>Number(!!b.pinned)-Number(!!a.pinned));render();}
  const tabRenameEnabled=false;
@@ -102,10 +108,10 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
   const finish=async commit=>{if(finished)return;finished=true;const name=input.value.trim();try{if(commit&&name&&name!==t.title){if(t.rename)await t.rename(name);else t.title=name;}}catch(e){logMessage(e);}render();};
   input.onclick=e=>e.stopPropagation();input.ondblclick=e=>e.stopPropagation();input.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();finish(true);}if(e.key==='Escape'){e.preventDefault();finish(false);}};input.onblur=()=>finish(true);input.focus();input.select();
  }
- const api={isClosing:()=>closing,snapshotLayout:()=>{const encode=n=>n.children?{direction:n.direction,ratio:n.ratio,children:n.children.map(encode)}:{id:n.id};return {topTabPositions:Object.fromEntries(tabs.filter(t=>t.topBar).map(t=>[t.id,t.topX||0])),topTabs:tabs.filter(t=>t.topBar).map(t=>t.id),active:active?.id,docked:docked?.id,groups:[...new Set(tabs.map(t=>t.group).filter(Boolean))].map(g=>encode(g.tree)),sidebarId,sidebarHidden:$('.sidebar').classList.contains('collapsed'),sidebarWidth:$('.sidebar').style.width,dockHeight:$('.dock').style.height,dockMaximized};},restoreLayout:async state=>{for(const t of tabs){t.topBar=(state.topTabs||[]).includes(t.id);t.topX=state.topTabPositions?.[t.id]||0;}const decode=n=>n.children?{direction:n.direction,ratio:n.ratio,children:n.children.map(decode).filter(Boolean)}:tabs.find(t=>t.id===n.id);for(const tree of state.groups||[]){const group={tree:decode(tree),element:el('div','terminal-group')};for(const t of leaves(group.tree))t.group=group;drawGroup(group);}active=tabs.find(t=>t.id===state.active)||tabs[0]||null;docked=tabs.find(t=>t.id===state.docked)||null;dockMaximized=state.dockMaximized;$('.dock').style.height=state.dockHeight;$('.sidebar').style.width=state.sidebarWidth;await api.showPanel(state.sidebarId||'explorer');$('.sidebar').classList.toggle('collapsed',state.sidebarHidden);if(state.sidebarHidden)ctx.emit('sidebar.visibility',{id:sidebarId,visible:false});render();active?.focus?.();},rename,tabs,commands,root,$,render,remove,select,current,split,active:()=>active,close,closeAll,
+ const api={isClosing:()=>closing,snapshotLayout:()=>{const encode=n=>n.children?{direction:n.direction,ratio:n.ratio,children:n.children.map(encode)}:{id:n.id};return {topTabPositions:Object.fromEntries(tabs.filter(t=>t.topBar).map(t=>[t.id,t.topX||0])),topTabs:tabs.filter(t=>t.topBar).map(t=>t.id),active:active?.id,docked:docked?.id,groups:[...new Set(tabs.map(t=>t.group).filter(Boolean))].map(g=>encode(g.tree)),sidebarId,sidebarHidden:$('.sidebar').classList.contains('collapsed'),sidebarWidth:$('.sidebar').style.width,dockHeight:$('.dock').style.height,dockMaximized};},restoreLayout:async state=>{for(const t of tabs){t.topBar=(state.topTabs||[]).includes(t.id);t.topX=state.topTabPositions?.[t.id]||0;}const decode=n=>n.children?{direction:n.direction,ratio:n.ratio,children:n.children.map(decode).filter(Boolean)}:tabs.find(t=>t.id===n.id);for(const tree of state.groups||[]){const group={tree:decode(tree),element:el('div','terminal-group')};for(const t of leaves(group.tree))t.group=group;drawGroup(group);}active=tabs.find(t=>t.id===state.active)||tabs[0]||null;visits.visit(active);docked=tabs.find(t=>t.id===state.docked)||null;dockMaximized=state.dockMaximized;$('.dock').style.height=state.dockHeight;$('.sidebar').style.width=state.sidebarWidth;await api.showPanel(state.sidebarId||'explorer');$('.sidebar').classList.toggle('collapsed',state.sidebarHidden);if(state.sidebarHidden)ctx.emit('sidebar.visibility',{id:sidebarId,visible:false});render();active?.focus?.();},rename,tabs,commands,root,$,render,remove,select,current,split,active:()=>active,close,closeAll,
   command(id,label,run){commands.set(id,{label,run});return()=>commands.delete(id);},
   run(id,...args){const c=commands.get(id);if(!c)throw new Error(`Plugin command unavailable: ${id}`);return c.run(...args);},
-  open(tab){const existing=tabs.find(t=>t.id===tab.id);if(existing){select(existing);return existing;}const previous=replacementTab(tabs,tab);let index=tabs.length;if(previous){index=tabs.indexOf(previous);remove(previous);}tabs.splice(index,0,tab);$('.editor-area').append(tab.element);render();select(tab);return tab;},
+  open(tab){const existing=tabs.find(t=>t.id===tab.id);if(existing){select(existing);return existing;}const previous=replacementTab(tabs,tab);let index=tabs.length;if(previous){index=tabs.indexOf(previous);remove(previous,{replacing:true});}tabs.splice(index,0,tab);$('.editor-area').append(tab.element);render();select(tab);return tab;},
   panel(id,label,icon,renderPanel){const b=button(icon,label,()=>{const show=sidebarId!==id||!visibility.sidebar||$('.sidebar').classList.contains('collapsed');visibility.sidebar=show;$('.sidebar').classList.toggle('collapsed',!show);applyVisibility();layoutAPI('settings/layout/write',{visibility:{...visibility}}).catch(logMessage);if(show)return api.showPanel(id);},'activity-button');const icons={explorer:'files',search:'search',git:'source-control',remote:'remote-explorer',settings:'settings-gear','plugin-manager':'extensions',plugins:'extensions'};if(icons[id]){b.textContent='';b.classList.add('codicon','codicon-'+icons[id]);}b.hidden=hiddenPanels.has(id);b.dataset.panelId=id;b.draggable=id!=='settings';
    b.ondragstart=e=>{if(id==='settings'){e.preventDefault();return;}e.dataTransfer.setData('application/x-harness-activity',id);e.dataTransfer.effectAllowed='move';b.classList.add('activity-dragging');};
    b.ondragend=()=>{for(const item of $('.activity').children)item.classList.remove('activity-dragging','activity-drop-before','activity-drop-after');};
@@ -115,14 +121,14 @@ export default {id:'workbench',requires:['api'],async activate(ctx){
    $('.activity').append(b);if(!activityOrder.includes(id))activityOrder.push(id);for(const item of [...$('.activity').children].sort((a,b)=>activityOrder.indexOf(a.dataset.panelId)-activityOrder.indexOf(b.dataset.panelId)))$('.activity').append(item);panels.set(id,{label,renderPanel,b});return()=>{b.remove();panels.delete(id);};},
   async showPanel(id,{preserve=false}={}){const p=panels.get(id);if(!p)return;ctx.emit('sidebar.leaving',{id:sidebarId,next:id});sidebarId=id;$('.sidebar').dataset.panel=id;$('.sidebar-heading span').textContent=id==='search'?p.label:p.label.toUpperCase();for(const [key,item]of panels)item.b.classList.toggle('selected',key===id);const previous=$('#sidebar-body'),body=replaceSidebarBody(previous,preserve);await p.renderPanel(body);if(preserve&&previous.isConnected&&sidebarId===id){const top=previous.scrollTop;previous.replaceWith(body);body.scrollTop=top;}},
   refreshPanel(){return api.showPanel(sidebarId);},
-  focusTerminal(t){if(docked===t||(t.group&&docked?.group===t.group))return;if(active!==t){active=t;render();}},
+  focusTerminal(t){visits.visit(t);if(docked===t||(t.group&&docked?.group===t.group))return;if(active!==t){active=t;render();}},
   hideTerminal(t){if(!tabs.includes(t)||t.kind!=='terminal')return;const same=x=>x===t||!!(t.group&&x?.group===t.group);lastDock=t;if(same(docked))docked=null;if(same(active))active=[...tabs].reverse().find(x=>!same(x)&&x!==docked)||null;render();active?.focus?.();},
   async dock(){
    if(docked){lastDock=docked;docked=null;render();active?.focus?.();return;}
    let t=tabs.includes(lastDock)?lastDock:current()?.kind==='terminal'?current():[...tabs].reverse().find(t=>t.kind==='terminal');
    if(!t){await api.run('terminal.new');t=current();}if(t?.kind!=='terminal')return;
    docked=t;lastDock=t;if(active===t||(active?.group&&active.group===t.group))active=[...tabs].reverse().find(x=>x!==t&&(!t.group||x.group!==t.group))||null;
-   render();t.focus?.();
+   render();visits.visit(t);t.focus?.();
   },
   async maximizeDock(){if(!docked){await api.dock();dockMaximized=true;}else dockMaximized=!dockMaximized;render();docked?.focus?.();}
 
