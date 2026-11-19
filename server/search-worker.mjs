@@ -19,7 +19,8 @@ try{
   if(host||!raw)return false;
   let binary;for(const p of [process.env.HARNESS_RG,`/Applications/Visual Studio Code.app/Contents/Resources/app/node_modules.asar.unpacked/@vscode/ripgrep-universal/bin/${process.platform}-${process.arch}/rg`,'/opt/homebrew/bin/rg','/usr/local/bin/rg','/Applications/ChatGPT.app/Contents/Resources/rg','/Applications/Visual Studio Code.app/Contents/Resources/app/node_modules/@vscode/ripgrep/bin/rg']){if(p)try{await fs.access(p);binary=p;break;}catch{}}
   if(!binary)return false;
-  const args=['--json','--hidden','--no-ignore','--glob','!.git/**','--glob','!**/.git/**','--glob','!**/node_modules/**','--glob','!**/.harness-trash/**',...(q.regex?['--engine','auto']:['--fixed-strings']),...(q.caseSensitive?[]:['--ignore-case']),'--',String(q.search),'.'];
+  const scopeGlobs=String(q.include||'').split(',').map(s=>s.trim()).filter(Boolean).flatMap(p=>['--glob','**/'+p,'--glob','**/'+p.replace(/\/+$/,'')+'/**']);
+  const args=['--json',...scopeGlobs,'--hidden','--no-ignore','--glob','!.git/**','--glob','!**/.git/**','--glob','!**/node_modules/**','--glob','!**/.harness-trash/**',...(q.regex?['--engine','auto']:['--fixed-strings']),...(q.caseSensitive?[]:['--ignore-case']),'--',String(q.search),'.'];
   const child=spawn(binary,args,{cwd:root,stdio:['ignore','pipe','pipe']});parentPort.postMessage({pid:child.pid});let error='';child.stderr.on('data',d=>error=(error+d.toString()).slice(0,8000));
   const done=new Promise((resolve,reject)=>{child.on('error',reject);child.on('close',code=>resolve(code));});
   for await(const json of createInterface({input:child.stdout,crlfDelay:Infinity})){const event=JSON.parse(json);if(event.type!=='match')continue;const d=event.data,p=d.path.text?.replace(/^\.\//,'');if(!p||!allowed(p)||Object.hasOwn(q.overlays||{},p))continue;line(p,d.lines.text.replace(/\n$/,''),d.line_number);if(truncated){child.kill();break;}}
