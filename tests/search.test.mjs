@@ -5,3 +5,16 @@ test('search reports actual result truncation and respects open editors and over
 test('folder picker filters append relative globs and reject outside roots',async()=>{const {addSearchFolder}=await import('../src/search-folder.js');assert.equal(addSearchFolder('*.txt','/workspace','/workspace/docs'),'*.txt, docs/**');assert.equal(addSearchFolder('docs/**','/workspace','/workspace/docs'),'docs/**');assert.equal(addSearchFolder('','/workspace','/workspace'),'**');assert.throws(()=>addSearchFolder('','/workspace','/workspace-other/docs'));});
 test('superseded and explicitly cancelled searches release their workers',async()=>{const root=await fs.mkdtemp(path.join(os.tmpdir(),'harness-search-cancel-'));try{await fs.writeFile(path.join(root,'a.txt'),'needle');const w=new Workspace(await fs.realpath(root)),channel='test-'+Date.now();const first=workspaceSearch(w,{search:'needle',channel});const next=workspaceSearch(w,{search:'needle',channel});assert.equal((await first).cancelled,true);assert.equal((await next).matches.length,1);const pending=workspaceSearch(w,{search:'needle',channel});await workspaceSearch(w,{channel,cancel:true});assert.equal((await pending).cancelled,true);}finally{await fs.rm(root,{recursive:true,force:true});}});
 test('empty search returns immediately without accessing a workspace',async()=>{const {workspaceSearch}=await import('../server/search.mjs');const w={get root(){throw Error('should not start a worker');}};assert.deepEqual(await workspaceSearch(w,{search:''}),{matches:[],truncated:false});});
+
+test('absolute folder filters match relative results and reject outside roots',async()=>{
+ const {normalizeSearchFilter}=await import('../src/search-folder.js');
+ assert.equal(normalizeSearchFilter('/workspace/src/, *.md','/workspace'),'src, *.md');
+ assert.equal(normalizeSearchFilter('/workspace','/workspace'),'**');
+ assert.throws(()=>normalizeSearchFilter('/workspace-other','/workspace'),/当前工作区/);
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'harness-filter-'));
+ try{await fs.mkdir(path.join(root,'src'));await fs.writeFile(path.join(root,'src/a.txt'),'needle');
+ const w=new Workspace(await fs.realpath(root));
+ assert.equal((await workspaceSearch(w,{search:'needle',include:normalizeSearchFilter(w.root+'/src',w.root)})).matches.length,1);
+ assert.equal((await workspaceSearch(w,{search:'needle',exclude:normalizeSearchFilter(w.root+'/src',w.root)})).matches.length,0);
+ }finally{await fs.rm(root,{recursive:true,force:true});}
+});
